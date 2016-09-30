@@ -9,18 +9,20 @@
 //! $2, $3         $v0, $v1       First and second return values, respectively
 //! $4, ..., $7    $a0, ..., $a3  First four arguments to functions
 //! $8, ..., $15   $t0, ..., $t7  Temporary registers
-//! $16, ..., $23  $s0, ..., $s7  Saved registers //! $24, $25       $t8, $t9       More temporary registers //! $26, $27       $k0, $k1       Reserved for kernel (operating system)
+//! $16, ..., $23  $s0, ..., $s7  Saved registers
+//! $24, $25       $t8, $t9       More temporary registers
+//! $26, $27       $k0, $k1       Reserved for kernel (operating system)
 //! $28            $gp            Global pointer
 //! $29            $sp            Stack pointer
 //! $30            $fp            Frame pointer
 //! $31            $ra            Return address
 
 
-use std::io::Cursor;
-use byteorder::{ByteOrder, BigEndian, ReadBytesExt};
+use byteorder::{ByteOrder, BigEndian};
 
 
 // Define some constants to make accessing the individual registers easier
+#[allow(dead_code)]
 const ZERO: usize = 0;
 const RET_1: usize = 2;
 const RET_2: usize = 3;
@@ -30,24 +32,29 @@ const FRAME_POINTER: usize = 30;
 const RETURN_ADDRESS: usize = 31;
 
 
+/// A representation of a single MIPS instruction or an invalid instruction.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     /// An R instruction (e.g. add $s1, $s2, $s3)
     ///
-    /// - opcode: machinecode representation of the instruction mnemonic
     /// - rs, rt: source registers
     /// - rd: destination register
     /// - shift: used with the shift and rotate instructions
     /// - funct: for instructions that share an opcode
     ///
-    /// R(opcode, rd, rs, rt, shift, funct),
-    R(u8, u8, u8, u8, u8, u8),
+    /// R(rd, rs, rt, shift, funct),
+    R(u8, u8, u8, u8, u8),
 
+    /// - opcode: machinecode representation of the instruction mnemonic
     /// An invalid instruction.
     Invalid,
 }
 
 
+/// A struct representing the state of the MIPS processor.
+///
+/// It contains an infinitely long array of bytes for RAM,
+/// some registers, and the program counter.
 #[allow(dead_code)]
 pub struct Processor {
     /// Store RAM as a big array of bytes (2^16).
@@ -61,6 +68,7 @@ pub struct Processor {
 
 
 impl Processor {
+    /// Create a new processor with its memory and registers cleared.
     pub fn new() -> Processor {
         Processor::default()
     }
@@ -87,12 +95,12 @@ impl Processor {
 
     /// Get the next instruction (as 32 bit endian big word).
     pub fn next_instruction(&self) -> Result<u32, String> {
-        if self.pc+3 >= self.memory.len() {
+        if self.pc + 3 >= self.memory.len() {
             return Err(format!("Trying to access memory outside of RAM at index {:#}",
                                self.pc));
         }
 
-        let instruction = &self.memory[self.pc..self.pc+4];
+        let instruction = &self.memory[self.pc..self.pc + 4];
         Ok(BigEndian::read_u32(instruction))
     }
 
@@ -102,26 +110,29 @@ impl Processor {
         let instruction = parse_instruction(next);
         unimplemented!()
     }
-
 }
 
 impl Default for Processor {
     fn default() -> Processor {
-        Processor { memory: vec![0; 65536],
-                    registers: [0; 32],
-                    pc: 0,
+        Processor {
+            memory: vec![0; 65536],
+            registers: [0; 32],
+            pc: 0,
         }
     }
 }
 
 
+/// Parse a single MIPS instruction and break it up into its
+/// constituent components (opcode, data, etc).
 #[inline]
 pub fn parse_instruction(inst: u32) -> Instruction {
     let opcode = (inst >> 26) as u8;  // Grab the top 6 bits
 
     // Check what type of instruction we have (R, I, J)
     match opcode {
-        _ => {
+        // For R-format instructions, the opcode is always zero
+        0 => {
             // An R instruction
             // opcode rs rt rd shift funct
             //      6  5  5  5     5     6
@@ -131,8 +142,10 @@ pub fn parse_instruction(inst: u32) -> Instruction {
             let shift = ((inst >> 6) & 0b0001_1111) as u8;
             let funct = (inst & 0b0011_1111) as u8;
 
-            Instruction::R(opcode, rs, rt, rd, shift, funct)
-        }
+            Instruction::R(rs, rt, rd, shift, funct)
+        },
+
+        _ => Instruction::Invalid,
     }
 }
 
@@ -164,17 +177,17 @@ fn load_42_sevens() {
 
     // Double check the first 42 elements equal 7
     assert!(cpu.memory
-            .to_vec()
-            .iter()
-            .take(42)
-            .all(|e| *e == 0x07));
+        .to_vec()
+        .iter()
+        .take(42)
+        .all(|e| *e == 0x07));
 
     // And make sure the rest of RAM is still zeroed out
     assert!(cpu.memory
-            .to_vec()
-            .iter()
-            .skip(42)
-            .all(|e| *e == 0x00));
+        .to_vec()
+        .iter()
+        .skip(42)
+        .all(|e| *e == 0x00));
 }
 
 #[test]
@@ -189,34 +202,39 @@ fn get_next_instruction() {
 #[test]
 fn extract_r_instruction() {
     // Check a super basic instruction first
-    let inst = 0xff_ff_ff_ff;
+    let inst = 0x03_ff_ff_ff;
     println!("{:#b}", inst);
     let got = parse_instruction(inst);
-    let should_be = Instruction::R(63, 31, 31, 31, 31, 63);
+    let should_be = Instruction::R(31, 31, 31, 31, 63);
     println!("{:?}", got);
     assert_eq!(got, should_be);
 
     let mut inst = 0b00;
-    let opcode = 0b0011_1111 << 26;  // 63
+    // let opcode = 0b0011_1111 << 26;  // 63
     let rs = 0b0001_1010 << 21;  // 26
     let rt = 0b0000_0100 << 16;  // 4
     let rd = 0b0001_1111 << 11;  // 31
     let shift = 0b0001_1101 << 6;  // 29
     let funct = 0b0000_1011;  // 11
 
-    inst = (inst
-            |opcode
-            | rs
-            | rt
-            | rd
-            | shift
-            | funct);
+    inst |= rs | rt | rd | shift | funct;
 
     // Double check we composed the instruction right
-    assert_eq!(inst, 0b111111_11010_00100_11111_11101_001011);
+    assert_eq!(inst, 0b000000_11010_00100_11111_11101_001011);
 
     let got = parse_instruction(inst);
-    let should_be = Instruction::R(63, 26, 4, 31, 29, 11);
+    let should_be = Instruction::R(26, 4, 31, 29, 11);
     println!("{:?}", got);
+    assert_eq!(got, should_be);
+}
+
+
+#[test]
+fn parse_invalid_instruction() {
+    let mut inst = 0x00;
+    let opcode = 0b0011_1111 << 26;  // 63
+    inst |= opcode;
+    let got = parse_instruction(inst);
+    let should_be = Instruction::Invalid;
     assert_eq!(got, should_be);
 }
