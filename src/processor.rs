@@ -97,8 +97,34 @@ impl Processor {
     /// Load and execute the next instruction.
     pub fn step(&mut self) -> Result<(), String> {
         let next = try!(self.next_instruction());
-        let instruction = parse_instruction(next);
-        unimplemented!()
+        let instruction = parse_instruction(next.clone());
+
+        match instruction {
+            Instruction::R(rd, rs, rt, shift, funct) => {
+                self.handle_r_instruction(rd, rs, rt, shift, funct)
+            }
+
+            Instruction::Invalid => Err(format!("Invalid instruction: {:#b}", next)),
+        }
+    }
+
+    fn handle_r_instruction(&mut self,
+                            rd: u8,
+                            rs: u8,
+                            rt: u8,
+                            shift: u8,
+                            funct: u8)
+                            -> Result<(), String> {
+        match funct {
+            // Add
+            32 => {
+                self.registers[rd as usize] = self.registers[rs as usize] + self.registers[rt as usize];
+                Ok(())
+            },
+
+            // Otherwise we don't know what this one is
+            unknown => Err(format!("Unknown funct: {:#b}", unknown)),
+        }
     }
 }
 
@@ -236,6 +262,24 @@ mod test {
 
 
     #[test]
-    fn step_one_add_instruction() {}
+    fn step_one_add_instruction() {
+        let inst = helpers::add_instruction(1, 1, 2);  // add r1, r1, r2
+        let instructions = vec![inst];
+        let instructions_as_bytes = helpers::instructions_to_bytes(instructions);
+        let mut cpu = Processor::new();
+        cpu.load(instructions_as_bytes);
+
+        // step 1: Put something interesting in registers 1 and 2
+        cpu.registers[1] = 1;
+        cpu.registers[2] = 1;
+
+        // step 2: Actually run the instruction
+        cpu.step().unwrap();
+
+        // step 3: Check that 1 + 1 = 2
+        assert_eq!(cpu.registers[1], 2);
+
+        // step 4: Profit!!!
+    }
 
 }
