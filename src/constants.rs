@@ -13,3 +13,5 @@ pub const RETURN_ADDRESS: usize = 31;
 // funct codes for R instructions
 pub const FUNCT_ADD: u8 = 0x20;
 pub const FUNCT_AND: u8 = 0x24;
+pub const FUNCT_DIV: u8 = 0x1c;
+pub const FUNCT_MULT: u8 = 0x18;

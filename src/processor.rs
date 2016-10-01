@@ -167,19 +167,47 @@ impl Processor {
         match funct {
             constants::FUNCT_ADD => {
                 self.registers[rd as usize] = self.registers[rs as usize] +
-                                              self.registers[rt as usize];
+                    self.registers[rt as usize];
                 Ok(())
             }
 
             constants::FUNCT_AND => {
                 self.registers[rd as usize] = self.registers[rs as usize] &
-                                              self.registers[rt as usize];
+                    self.registers[rt as usize];
+                Ok(())
+            }
+
+            constants::FUNCT_DIV => {
+                self.registers[rd as usize] = self.registers[rs as usize] /
+                    self.registers[rt as usize];
+                Ok(())
+            }
+
+            constants::FUNCT_MULT => {
+                self.registers[rd as usize] = self.reg(rs) * self.reg(rt);
                 Ok(())
             }
 
             // Otherwise we don't know what this one is
             unknown => Err(format!("Unknown funct: {:#b}", unknown)),
         }
+    }
+
+    /// Get the value of a register
+    #[inline]
+    pub fn reg(&self, index: u8) -> u32 {
+        self.registers[index as usize].clone()
+    }
+
+
+    /// Get the entire contents of memory.
+    pub fn memory(&self) -> &Vec<u8> {
+        &self.memory
+    }
+
+    /// Get the contents of all the registers.
+    pub fn registers(&self) -> &[u32] {
+        &self.registers
     }
 }
 
@@ -254,17 +282,17 @@ mod test {
 
         // Double check the first 42 elements equal 7
         assert!(cpu.memory
-            .to_vec()
-            .iter()
-            .take(42)
-            .all(|e| *e == 0x07));
+                .to_vec()
+                .iter()
+                .take(42)
+                .all(|e| *e == 0x07));
 
         // And make sure the rest of RAM is still zeroed out
         assert!(cpu.memory
-            .to_vec()
-            .iter()
-            .skip(42)
-            .all(|e| *e == 0x00));
+                .to_vec()
+                .iter()
+                .skip(42)
+                .all(|e| *e == 0x00));
     }
 
     #[test]
@@ -370,6 +398,26 @@ mod test {
             cpu.registers[2] = 7;
             cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_AND).unwrap();
             assert_eq!(cpu.registers[1], 42 & 7);
+        }
+
+        #[test]
+        fn execute_single_r_mult_instruction() {
+            let mut cpu = Processor::new();
+            cpu.registers[1] = 42;
+            cpu.registers[2] = 7;
+            cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_MULT).unwrap();
+            assert_eq!(cpu.registers[1], 42 * 7);
+        }
+
+        #[test]
+        fn execute_single_r_div_instruction() {
+            let mut cpu = Processor::new();
+            cpu.registers[1] = 43;
+            cpu.registers[2] = 7;
+            cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_DIV).unwrap();
+
+            // Note: this is integer division
+            assert_eq!(cpu.registers[1], 6);
         }
     }
 }
