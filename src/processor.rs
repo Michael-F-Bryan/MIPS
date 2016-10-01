@@ -12,24 +12,14 @@
 //! $16, ..., $23  $s0, ..., $s7  Saved registers
 //! $24, $25       $t8, $t9       More temporary registers
 //! $26, $27       $k0, $k1       Reserved for kernel (operating system)
-//! $28            $gp            Global pointer
-//! $29            $sp            Stack pointer
+//! $28            $gp            Global pointer //! $29            $sp            Stack pointer
 //! $30            $fp            Frame pointer
 //! $31            $ra            Return address
 
 
 use byteorder::{ByteOrder, BigEndian};
 
-
-// Define some constants to make accessing the individual registers easier
-#[allow(dead_code)]
-const ZERO: usize = 0;
-const RET_1: usize = 2;
-const RET_2: usize = 3;
-const GLOBAL_POINTER: usize = 28;
-const STACK_POINTER: usize = 29;
-const FRAME_POINTER: usize = 30;
-const RETURN_ADDRESS: usize = 31;
+use constants::*;
 
 
 /// A representation of a single MIPS instruction or an invalid instruction.
@@ -143,98 +133,109 @@ pub fn parse_instruction(inst: u32) -> Instruction {
             let funct = (inst & 0b0011_1111) as u8;
 
             Instruction::R(rs, rt, rd, shift, funct)
-        },
+        }
 
         _ => Instruction::Invalid,
     }
 }
 
 
-#[test]
-fn constructor() {
-    let got = Processor::new();
-    assert_eq!(got.registers, [0; 32]);
-    assert_eq!(got.memory.len(), 65536);
-}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use helpers;
 
-#[test]
-fn load_empty_program() {
-    let program: Vec<u8> = Vec::new();
-    let mut cpu = Processor::new();
-    let got = cpu.load(program);
-    assert_eq!(got, Ok(0));
+    #[test]
+    fn constructor() {
+        let got = Processor::new();
+        assert_eq!(got.registers, [0; 32]);
+        assert_eq!(got.memory.len(), 65536);
+    }
 
-    // Make sure the entire memory is still full of zeroes
-    assert!(cpu.memory.to_vec() == vec![0; 65536]);
-}
+    #[test]
+    fn load_empty_program() {
+        let program: Vec<u8> = Vec::new();
+        let mut cpu = Processor::new();
+        let got = cpu.load(program);
+        assert_eq!(got, Ok(0));
 
-#[test]
-fn load_42_sevens() {
-    let program: Vec<u8> = vec![0x07; 42];
-    let mut cpu = Processor::new();
-    let got = cpu.load(program);
-    assert_eq!(got, Ok(42));
+        // Make sure the entire memory is still full of zeroes
+        assert!(cpu.memory.to_vec() == vec![0; 65536]);
+    }
 
-    // Double check the first 42 elements equal 7
-    assert!(cpu.memory
-        .to_vec()
-        .iter()
-        .take(42)
-        .all(|e| *e == 0x07));
+    #[test]
+    fn load_42_sevens() {
+        let program: Vec<u8> = vec![0x07; 42];
+        let mut cpu = Processor::new();
+        let got = cpu.load(program);
+        assert_eq!(got, Ok(42));
 
-    // And make sure the rest of RAM is still zeroed out
-    assert!(cpu.memory
-        .to_vec()
-        .iter()
-        .skip(42)
-        .all(|e| *e == 0x00));
-}
+        // Double check the first 42 elements equal 7
+        assert!(cpu.memory
+            .to_vec()
+            .iter()
+            .take(42)
+            .all(|e| *e == 0x07));
 
-#[test]
-fn get_next_instruction() {
-    let program: Vec<u8> = vec![0x07; 42];
-    let mut cpu = Processor::new();
-    assert_eq!(cpu.next_instruction(), Ok(0x00));
-    cpu.load(program).unwrap();
-    assert_eq!(cpu.next_instruction(), Ok(0x07070707));
-}
+        // And make sure the rest of RAM is still zeroed out
+        assert!(cpu.memory
+            .to_vec()
+            .iter()
+            .skip(42)
+            .all(|e| *e == 0x00));
+    }
 
-#[test]
-fn extract_r_instruction() {
-    // Check a super basic instruction first
-    let inst = 0x03_ff_ff_ff;
-    println!("{:#b}", inst);
-    let got = parse_instruction(inst);
-    let should_be = Instruction::R(31, 31, 31, 31, 63);
-    println!("{:?}", got);
-    assert_eq!(got, should_be);
+    #[test]
+    fn get_next_instruction() {
+        let program: Vec<u8> = vec![0x07; 42];
+        let mut cpu = Processor::new();
+        assert_eq!(cpu.next_instruction(), Ok(0x00));
+        cpu.load(program).unwrap();
+        assert_eq!(cpu.next_instruction(), Ok(0x07070707));
+    }
 
-    let mut inst = 0b00;
-    // let opcode = 0b0011_1111 << 26;  // 63
-    let rs = 0b0001_1010 << 21;  // 26
-    let rt = 0b0000_0100 << 16;  // 4
-    let rd = 0b0001_1111 << 11;  // 31
-    let shift = 0b0001_1101 << 6;  // 29
-    let funct = 0b0000_1011;  // 11
+    #[test]
+    fn extract_r_instruction() {
+        // Check a super basic instruction first
+        let inst = 0x03_ff_ff_ff;
+        println!("{:#b}", inst);
+        let got = parse_instruction(inst);
+        let should_be = Instruction::R(31, 31, 31, 31, 63);
+        println!("{:?}", got);
+        assert_eq!(got, should_be);
 
-    inst |= rs | rt | rd | shift | funct;
+        let mut inst = 0b00;
+        // let opcode = 0b0011_1111 << 26;  // 63
+        let rs = 0b0001_1010 << 21;  // 26
+        let rt = 0b0000_0100 << 16;  // 4
+        let rd = 0b0001_1111 << 11;  // 31
+        let shift = 0b0001_1101 << 6;  // 29
+        let funct = 0b0000_1011;  // 11
 
-    // Double check we composed the instruction right
-    assert_eq!(inst, 0b000000_11010_00100_11111_11101_001011);
+        inst |= rs | rt | rd | shift | funct;
 
-    let got = parse_instruction(inst);
-    let should_be = Instruction::R(26, 4, 31, 29, 11);
-    println!("{:?}", got);
-    assert_eq!(got, should_be);
-}
+        // Double check we composed the instruction right
+        assert_eq!(inst, 0b000000_11010_00100_11111_11101_001011);
+
+        let got = parse_instruction(inst);
+        let should_be = Instruction::R(26, 4, 31, 29, 11);
+        println!("{:?}", got);
+        assert_eq!(got, should_be);
+    }
 
 
-#[test]
-fn parse_invalid_instruction() {
-    let mut inst = 0x00;
-    let opcode = 0b0011_1111 << 26;  // 63
-    inst |= opcode;
-    let got = parse_instruction(inst);
-    let should_be = Instruction::Invalid;
-    assert_eq!(got, should_be);
+    #[test]
+    fn parse_invalid_instruction() {
+        let mut inst = 0x00;
+        let opcode = 0b0011_1111 << 26;  // 63
+        inst |= opcode;
+        let got = parse_instruction(inst);
+        let should_be = Instruction::Invalid;
+        assert_eq!(got, should_be);
+    }
+
+
+    #[test]
+    fn step_one_add_instruction() {}
+
 }
