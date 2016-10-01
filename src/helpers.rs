@@ -3,8 +3,7 @@
 //! instruction.
 
 
-use std::io::Cursor;
-use byteorder::{ByteOrder, BigEndian, WriteBytesExt};
+use byteorder::{BigEndian, WriteBytesExt};
 
 
 /// Convert a list of big endian instructions to a byte array.
@@ -42,7 +41,7 @@ pub fn make_r_instruction(opcode: usize,
     assert!(shift < (1 << 5));
     assert!(funct < (1 << 6));
 
-    let inst = (0 | opcode << 26 | rs << 21 | rt << 16 | rd << 11 | shift << 6 | funct);
+    let inst = 0 | opcode << 26 | rs << 21 | rt << 16 | rd << 11 | shift << 6 | funct;
 
     inst as u32
 }

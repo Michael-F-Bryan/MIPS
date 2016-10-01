@@ -2,24 +2,70 @@
 //!
 //! The registers used, and their common names, are as follows:
 //!
-//! Number         Name           Comments
-//! ======         ====           ========
-//! $0             $zero          Always zero
-//! $1             $at            Reserved for assembler
-//! $2, $3         $v0, $v1       First and second return values, respectively
-//! $4, ..., $7    $a0, ..., $a3  First four arguments to functions
-//! $8, ..., $15   $t0, ..., $t7  Temporary registers
-//! $16, ..., $23  $s0, ..., $s7  Saved registers
-//! $24, $25       $t8, $t9       More temporary registers
-//! $26, $27       $k0, $k1       Reserved for kernel (operating system)
-//! $28            $gp            Global pointer //! $29            $sp            Stack pointer
-//! $30            $fp            Frame pointer
-//! $31            $ra            Return address
+//!     Number         Name           Comments
+//!     ======         ====           ========
+//!     $0             $zero          Always zero
+//!     $1             $at            Reserved for assembler
+//!     $2, $3         $v0, $v1       First and second return values, respectively
+//!     $4, ..., $7    $a0, ..., $a3  First four arguments to functions
+//!     $8, ..., $15   $t0, ..., $t7  Temporary registers
+//!     $16, ..., $23  $s0, ..., $s7  Saved registers
+//!     $24, $25       $t8, $t9       More temporary registers
+//!     $26, $27       $k0, $k1       Reserved for kernel (operating system)
+//!     $28            $gp            Global pointer
+//!     $29            $sp            Stack pointer
+//!     $30            $fp            Frame pointer
+//!     $31            $ra            Return address
+//!
+//! MIPS uses the following opcodes:
+//!
+//!     Mnemonic    Meaning                  Type     Opcode      Funct
+//!     ========    =======                  ====     ======      =====
+//!     add         Add                      R        0x00        0x20
+//!     addi        Add Immediate            I        0x08        NA
+//!     addiu       Add Unsigned Immediate   I        0x09        NA
+//!     addu        Bitwise Add Unsigned     R        0x00        0x21
+//!     and         Bitwise AND              R        0x00        0x24
+//!     andi        Bitwise AND Immediate    I        0x0C        NA
+//!     beq         Branch if Equal          I        0x04        NA
+//!     bne         Branch Not Equal         I        0x05        NA
+//!     div         Divide                   R        0x00        x1A
+//!     divu        Unsigned Divide          R        0x00        0x1B
+//!     j           Jump to Address          J        0x02        NA
+//!     jal         Jump and Link            J        0x03        NA
+//!     jr          Jump to Address          R        0x00        0x08
+//!     lbu         Load Byte Unsigned       I        0x24        NA
+//!     lhu         Load Halfword Unsigned   I        0x25        NA
+//!     lui         Load Upper Immediate     I        0x0F        NA
+//!     lw          Load Word                I        0x23        NA
+//!     mfhi        Move from HI Register    R        0x00        0x10
+//!     mflo        Move from LO Register    R        0x00        0x12
+//!     mfc0        Move from Coprocessor 0  R        0x10        NA
+//!     mult        Multiply                 R        0x00        0x18
+//!     multu       Unsigned Multiply        R        0x00        0x19
+//!     nor         Bitwise NOR              R        0x00        0x27
+//!     xor         Bitwise XOR              R        0x00        0x26
+//!     or          Bitwise OR               R        0x00        0x25
+//!     ori         Bitwise OR Immediate     I        0x0D        NA
+//!     sb          Store Byte               I        0x28        NA
+//!     sh          Store Halfword           I        0x29        NA
+//!     slt         Set to 1 if Less Than    R        0x00        0x2A
+//!     slti        Set to 1 if Less         I        0x0A        NA
+//!                     Than Immediate
+//!     sltiu       Set to 1 if Less Than    I        0x0B        NA
+//!                     Unsigned Immediate
+//!     sltu        Set to 1 if Less Than    R        0x00        0x2B
+//!                     Unsigned
+//!     sll         Logical Shift Left       R        0x00        0x00
+//!     srl         Logical Shift Right      R        0x00        0x02
+//!     sra         Arithmetic Shift Right   R        0x00        0x03
+//!     sub         Subtract                 R        0x00        0x22
+//!     subu        Unsigned Subtract        R        0x00        0x23
+//!     sw          Store Word               I        0x2B        NA
 
 
 use byteorder::{ByteOrder, BigEndian};
-
-use constants::*;
+use constants;
 
 
 /// A representation of a single MIPS instruction or an invalid instruction.
@@ -53,6 +99,7 @@ pub struct Processor {
     /// The 32 registers
     registers: [u32; 32],
 
+    /// The program counter - a pointer to the next instruction in memory.
     pc: usize,
 }
 
@@ -108,6 +155,8 @@ impl Processor {
         }
     }
 
+    /// Evaluate a single R instruction, returning Ok() or an error message
+    /// if it fails.
     fn handle_r_instruction(&mut self,
                             rd: u8,
                             rs: u8,
@@ -116,11 +165,17 @@ impl Processor {
                             funct: u8)
                             -> Result<(), String> {
         match funct {
-            // Add
-            32 => {
-                self.registers[rd as usize] = self.registers[rs as usize] + self.registers[rt as usize];
+            constants::FUNCT_ADD => {
+                self.registers[rd as usize] = self.registers[rs as usize] +
+                                              self.registers[rt as usize];
                 Ok(())
-            },
+            }
+
+            constants::FUNCT_AND => {
+                self.registers[rd as usize] = self.registers[rs as usize] &
+                                              self.registers[rt as usize];
+                Ok(())
+            }
 
             // Otherwise we don't know what this one is
             unknown => Err(format!("Unknown funct: {:#b}", unknown)),
@@ -143,7 +198,7 @@ impl Default for Processor {
 /// constituent components (opcode, data, etc).
 #[inline]
 pub fn parse_instruction(inst: u32) -> Instruction {
-    let opcode = (inst >> 26) as u8;  // Grab the top 6 bits
+    let opcode = ((inst >> 26) & 0b0011_1111) as u8;  // Grab the top 6 bits
 
     // Check what type of instruction we have (R, I, J)
     match opcode {
@@ -170,6 +225,7 @@ pub fn parse_instruction(inst: u32) -> Instruction {
 mod test {
     use super::*;
     use helpers;
+    use constants;
 
     #[test]
     fn constructor() {
@@ -260,14 +316,16 @@ mod test {
         assert_eq!(got, should_be);
     }
 
-
     #[test]
     fn step_one_add_instruction() {
+        // Create a program consisting of a single add
         let inst = helpers::add_instruction(1, 1, 2);  // add r1, r1, r2
         let instructions = vec![inst];
         let instructions_as_bytes = helpers::instructions_to_bytes(instructions);
+
+        // then load it
         let mut cpu = Processor::new();
-        cpu.load(instructions_as_bytes);
+        cpu.load(instructions_as_bytes).unwrap();
 
         // step 1: Put something interesting in registers 1 and 2
         cpu.registers[1] = 1;
@@ -282,4 +340,36 @@ mod test {
         // step 4: Profit!!!
     }
 
+
+    // Put tests for each individual R instruction in its own sub
+    // module so they're all together
+    mod r_instructions {
+        use super::super::*;
+        use helpers;
+        use constants;
+
+        #[test]
+        fn execute_single_r_add_instruction() {
+            let mut cpu = Processor::new();
+
+            // Put something interesting in registers 1 and 2
+            cpu.registers[1] = 42;
+            cpu.registers[2] = 7;
+
+            // Run the instruction r1 = r1+r2
+            cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_ADD).unwrap();
+
+            // Check the addition was correct
+            assert_eq!(cpu.registers[1], 49);
+        }
+
+        #[test]
+        fn execute_single_r_and_instruction() {
+            let mut cpu = Processor::new();
+            cpu.registers[1] = 42;
+            cpu.registers[2] = 7;
+            cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_AND).unwrap();
+            assert_eq!(cpu.registers[1], 42 & 7);
+        }
+    }
 }
