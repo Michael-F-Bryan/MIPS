@@ -16,8 +16,7 @@
 //!     $29            $sp            Stack pointer
 //!     $30            $fp            Frame pointer
 //!     $31            $ra            Return address
-//!
-//! MIPS uses the following opcodes:
+//! //! MIPS uses the following opcodes:
 //!
 //!     Mnemonic    Meaning                  Type     Opcode      Funct
 //!     ========    =======                  ====     ======      =====
@@ -66,10 +65,11 @@
 
 use byteorder::{ByteOrder, BigEndian};
 use constants;
+use std::fmt::{Error, Debug, Formatter};
 
 
 /// A representation of a single MIPS instruction or an invalid instruction.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Instruction {
     /// An R instruction (e.g. add $s1, $s2, $s3)
     ///
@@ -84,6 +84,27 @@ pub enum Instruction {
     /// - opcode: machinecode representation of the instruction mnemonic
     /// An invalid instruction.
     Invalid,
+}
+
+impl Debug for Instruction {
+    fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
+        match *self {
+            Instruction::R(rd, rs, rt, shift, funct) => {
+                write!(f, "R({:#x}, {:#x}, {:#x}, {:#x}, {:#x})",
+                       rd,
+                       rs,
+                       rt,
+                       shift,
+                       funct);
+                Ok(())
+            },
+
+            Instruction::Invalid => {
+                write!(f, "Invalid");
+                Ok(())
+            }
+        }
+    }
 }
 
 
