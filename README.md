@@ -11,6 +11,21 @@ Useful References
 - A MIPS simulator written in Python ([github][2])
 
 
+To-Do List
+----------
+
+- [x] Create a basic processor to represent registers and memory
+- [x] Parse and execute a single R instruction
+- [ ] Parse and execute a single I instruction
+- [ ] Write a compiler that'll turn MIPS assembly code into machine code
+      (binary)
+- [ ] Implement jump instructions
+- [ ] Add syscalls
+- [ ] Compile then execute some of the basic programs in the `/src/test`
+      directory
+- [ ] Implement a `GDB` like stepper mechanism
+- [ ] Pass the `torture.s` test program
+
 
 [1]: http://web.stanford.edu/class/ee182/Projects/PA2/pa2.html
 [2]: https://github.com/maguire/MIPS-Simulator
