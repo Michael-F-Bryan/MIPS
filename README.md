@@ -23,10 +23,10 @@ To-Do List
 - [ ] Write an assembler that'll turn MIPS assembly code into machine code
       (binary)
 - [x] Implement jump instructions
-- [ ] Add syscalls
+- [x] Add syscalls
 - [ ] Compile then execute some of the basic programs in the `/src/test`
       directory
-- [ ] Add a command line interface
+- [x] Add a basic command line interface
 - [ ] Implement a `GDB` like stepper mechanism
 - [ ] Pass the `torture.s` test program
 

@@ -8,12 +8,15 @@ extern crate byteorder;
 extern crate rustc_serialize;
 extern crate docopt;
 
+pub mod processor;
+mod constants;
+pub mod helpers;
+
 use std::fs::File;
 use std::io::Read;
 use std::process::exit;
-pub mod processor;
-mod constants;
-mod helpers;
+
+pub use processor::{Instruction, Processor, parse_instruction};
 
 
 docopt!(Args derive Debug, "

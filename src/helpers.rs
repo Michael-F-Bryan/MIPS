@@ -24,6 +24,8 @@ pub fn add_instruction(rd: usize, rs: usize, rt: usize) -> u32 {
     make_r_instruction(0, rs, rt, rd, 0, 0b100000)
 }
 
+/// Create a syscall instruction. Pretty much just gives you back
+/// the constant `0xC`.
 pub fn syscall_instruction() -> u32 {
     // A syscall is really just an R instruction with a funct of 12
     0xc

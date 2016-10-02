@@ -15,8 +15,9 @@
 //!     $28            $gp            Global pointer
 //!     $29            $sp            Stack pointer
 //!     $30            $fp            Frame pointer
-//!     $31            $ra            Return address
-//! //! MIPS uses the following opcodes:
+//!     $31            $ra            Return address //! //! MIPS uses the following opcodes:
+//!
+//! Here is a list of all the instructions supported by MIPS:
 //!
 //!     Mnemonic    Meaning                  Type     Opcode      Funct
 //!     ========    =======                  ====     ======      =====
@@ -87,6 +88,25 @@ pub enum Instruction {
 
     /// A syscall that uses the contents of $v0 to decide which function
     /// to run.
+    ///
+    /// Here are some of the more common syscall codes:
+    ///
+    ///     code    call            arguments                  results
+    ///     ====    ====            =========                  =======
+    ///     1       print integer   $a0 = integer to print
+    ///     2       print float     $f12 = float to print
+    ///     3       print double    $f12 = float to print
+    ///     4       print string    $a0 = address of
+    ///                                 beginning of string
+    ///     5       read integer                               integer stored in $v0
+    ///     6       read float                                 float stored in $f0
+    ///     7       read double                                double stored in $f0
+    ///     8       read string     $a0 = pointer to buffer,   string stored in buffer
+    ///                                 $a1 = length of buffer
+    ///     9       sbrk (allocate  $a0 = size needed          $v0 = address of buffer
+    ///                 memory
+    ///                 buffer)
+    ///     10      exit
     Syscall,
 
     /// - opcode: machinecode representation of the instruction mnemonic
@@ -203,25 +223,6 @@ impl Processor {
     }
 
     /// Execute a syscall.
-    ///
-    /// Here are some of the more common syscall codes:
-    ///
-    /// code    call            arguments                  results
-    /// ====    ====            =========                  =======
-    /// 1       print integer   $a0 = integer to print
-    /// 2       print float     $f12 = float to print
-    /// 3       print double    $f12 = float to print
-    /// 4       print string    $a0 = address of
-    ///                             beginning of string
-    /// 5       read integer                               integer stored in $v0
-    /// 6       read float                                 float stored in $f0
-    /// 7       read double                                double stored in $f0
-    /// 8       read string     $a0 = pointer to buffer,   string stored in buffer
-    ///                             $a1 = length of buffer
-    /// 9       sbrk (allocate  $a0 = size needed          $v0 = address of buffer
-    ///             memory
-    ///             buffer)
-    /// 10      exit
     fn handle_syscall(&mut self, arg: u32) -> Result<(), String> {
         match arg {
             10 => {
