@@ -65,7 +65,7 @@
 
 use byteorder::{ByteOrder, BigEndian};
 use constants;
-use std::fmt::{Error, Debug, Formatter};
+use std::fmt::{Debug, Formatter};
 use std::mem::transmute;
 
 
@@ -99,18 +99,15 @@ impl Debug for Instruction {
                        rs,
                        rt,
                        shift,
-                       funct);
-                Ok(())
+                       funct)
             },
 
             Instruction::J(addr) => {
-                write!(f, "J({:#x})", addr);
-                Ok(())
+                write!(f, "J({:#x})", addr)
             },
 
             Instruction::Invalid => {
-                write!(f, "Invalid");
-                Ok(())
+                write!(f, "Invalid")
             }
         }
     }
@@ -124,13 +121,13 @@ impl Debug for Instruction {
 #[allow(dead_code)]
 pub struct Processor {
     /// Store RAM as a big array of bytes (2^16).
-    memory: Vec<u8>,
+    pub memory: Vec<u8>,
 
     /// The 32 registers
-    registers: [u32; 32],
+    pub registers: [u32; 32],
 
     /// The program counter - a pointer to the next instruction in memory.
-    pc: usize,
+    pub pc: usize,
 }
 
 
@@ -175,10 +172,8 @@ impl Processor {
 
     /// Load and execute the next instruction.
     pub fn step(&mut self) -> Result<(), String> {
-        println!("{}", self.pc);
         let next = try!(self.next_instruction());
         let instruction = parse_instruction(next.clone());
-        println!("{}", self.pc);
 
         match instruction {
             Instruction::R(rd, rs, rt, shift, funct) => {
@@ -242,15 +237,9 @@ impl Processor {
         self.registers[index as usize].clone()
     }
 
-
-    /// Get the entire contents of memory.
-    pub fn memory(&self) -> &Vec<u8> {
-        &self.memory
-    }
-
-    /// Get the contents of all the registers.
-    pub fn registers(&self) -> &[u32] {
-        &self.registers
+    /// Get the program counter's current value.
+    pub fn program_counter(&self) -> usize {
+        self.pc.clone()
     }
 }
 
@@ -503,4 +492,16 @@ mod test {
             assert_eq!(cpu.registers[1], 6);
         }
     }
+
+    // #[test]
+    // fn dummy_data() {
+    //     use std::fs::File;
+    //     use std::io::Write;
+    //     let inst = helpers::add_instruction(1, 1, 2);  // add r1, r1, r2
+    //     let instructions = vec![inst];
+    //     let instructions_as_bytes = helpers::instructions_to_bytes(instructions);
+    //     let mut f = File::create("add").unwrap();
+    //     f.write(&instructions_as_bytes);
+
+    // }
 }

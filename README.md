@@ -4,6 +4,9 @@ A Basic MIPS Emulator
 The plan is to build a MIPS emulator that roughly follows [this][1] assignment
 brief I found on the internet.
 
+Note that you'll probably want to use the `nightly` version of the rust
+compiler. Check out [rustup.rs][rustup] for an easy way to manage rust
+versions.
 
 Useful References
 -----------------
@@ -23,9 +26,11 @@ To-Do List
 - [ ] Add syscalls
 - [ ] Compile then execute some of the basic programs in the `/src/test`
       directory
+- [ ] Add a command line interface
 - [ ] Implement a `GDB` like stepper mechanism
 - [ ] Pass the `torture.s` test program
 
 
 [1]: http://web.stanford.edu/class/ee182/Projects/PA2/pa2.html
 [2]: https://github.com/maguire/MIPS-Simulator
+[rustup]: https://www.rustup.rs/

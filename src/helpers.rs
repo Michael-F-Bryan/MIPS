@@ -1,7 +1,7 @@
 //! A module full of useful miscellaneous functions that help automate
 //! boring jobs like creating the machine code representation of an
 //! instruction.
-
+#![allow(dead_code)]
 
 use byteorder::{BigEndian, WriteBytesExt};
 use std::mem::transmute;
