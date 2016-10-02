@@ -66,6 +66,7 @@
 use byteorder::{ByteOrder, BigEndian};
 use constants;
 use std::fmt::{Error, Debug, Formatter};
+use std::mem::transmute;
 
 
 /// A representation of a single MIPS instruction or an invalid instruction.
@@ -80,6 +81,9 @@ pub enum Instruction {
     ///
     /// R(rd, rs, rt, shift, funct),
     R(u8, u8, u8, u8, u8),
+
+    /// A Jump instruction takes the target address as its only argument
+    J(i32),
 
     /// - opcode: machinecode representation of the instruction mnemonic
     /// An invalid instruction.
@@ -96,6 +100,11 @@ impl Debug for Instruction {
                        rt,
                        shift,
                        funct);
+                Ok(())
+            },
+
+            Instruction::J(addr) => {
+                write!(f, "J({:#x})", addr);
                 Ok(())
             },
 
@@ -151,29 +160,42 @@ impl Processor {
         Ok(num_bytes)
     }
 
-    /// Get the next instruction (as 32 bit endian big word).
-    pub fn next_instruction(&self) -> Result<u32, String> {
+    /// Get the next instruction (as 32 bit endian big word) and update the
+    /// program counter.
+    pub fn next_instruction(&mut self) -> Result<u32, String> {
         if self.pc + 3 >= self.memory.len() {
             return Err(format!("Trying to access memory outside of RAM at index {:#}",
                                self.pc));
         }
 
         let instruction = &self.memory[self.pc..self.pc + 4];
+        self.pc += 4;
         Ok(BigEndian::read_u32(instruction))
     }
 
     /// Load and execute the next instruction.
     pub fn step(&mut self) -> Result<(), String> {
+        println!("{}", self.pc);
         let next = try!(self.next_instruction());
         let instruction = parse_instruction(next.clone());
+        println!("{}", self.pc);
 
         match instruction {
             Instruction::R(rd, rs, rt, shift, funct) => {
                 self.handle_r_instruction(rd, rs, rt, shift, funct)
             }
 
+            Instruction::J(offset) => {
+                // Add the offset to the program counter, making sure to
+                // subtract 4 because the next_instruction() function
+                // incremented the program counter
+                self.pc += offset as usize - 4;
+                Ok(())
+            }
+
             Instruction::Invalid => Err(format!("Invalid instruction: {:#b}", next)),
         }
+
     }
 
     /// Evaluate a single R instruction, returning Ok() or an error message
@@ -263,6 +285,17 @@ pub fn parse_instruction(inst: u32) -> Instruction {
             let funct = (inst & 0b0011_1111) as u8;
 
             Instruction::R(rs, rt, rd, shift, funct)
+        },
+
+        // Jump instructions
+        constants::JMP => {
+            let addr = (inst & 0b0000_0011__1111_1111__1111_1111__1111_1111) << 2;
+
+            // Transmute the address (which is a u32) into a signed number
+            unsafe {
+                let addr = transmute::<u32, i32>(addr);
+                Instruction::J(addr)
+            }
         }
 
         _ => Instruction::Invalid,
@@ -354,6 +387,15 @@ mod test {
         assert_eq!(got, should_be);
     }
 
+    #[test]
+    fn parse_jump_instruction() {
+        // Create a valid jump instruction
+        let offset: i32 = 128;
+        let inst = helpers::jump_instruction(offset);
+        let got = parse_instruction(inst);
+        let should_be = Instruction::J(offset);
+        assert_eq!(got, should_be);
+    }
 
     #[test]
     fn parse_invalid_instruction() {
@@ -387,6 +429,26 @@ mod test {
         assert_eq!(cpu.registers[1], 2);
 
         // step 4: Profit!!!
+    }
+
+    #[test]
+    fn step_one_jump_instruction() {
+        let offset = 0b0011_1100;
+        let inst = helpers::jump_instruction(offset);  // j 0xffff
+        let instructions = helpers::instructions_to_bytes(vec![inst]);
+
+        let mut cpu = Processor::new();
+
+        // Set the pc to something other than zero
+        cpu.pc = 42;
+
+        // Then load the instructions there
+        for (i, byte) in instructions.iter().enumerate() {
+            cpu.memory[cpu.pc+i] = *byte;
+        }
+
+        cpu.step().unwrap();
+        assert_eq!(cpu.pc as u32, 42 + offset as u32);
     }
 
 

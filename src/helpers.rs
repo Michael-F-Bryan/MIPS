@@ -4,6 +4,7 @@
 
 
 use byteorder::{BigEndian, WriteBytesExt};
+use std::mem::transmute;
 
 
 /// Convert a list of big endian instructions to a byte array.
@@ -23,6 +24,26 @@ pub fn add_instruction(rd: usize, rs: usize, rt: usize) -> u32 {
     make_r_instruction(0, rs, rt, rd, 0, 0b100000)
 }
 
+/// Create an instruction for jumping to a particular address.
+pub fn jump_instruction(addr: i32) -> u32 {
+    let opcode = 0x02;
+
+    // Transmute the address from an i32 to a u32
+    // This is perfectly safe because they are the same size and
+    // we're just changing what the compiler interprets the bits as
+    let addr = unsafe {
+        transmute::<i32, u32>(addr)
+    };
+
+    // Discard the last two bits because we know an address is always
+    // a multiple of 4
+    let addr = addr >> 2;
+
+    // Make sure the leading 6 bits are zeroes so we can fit the opcode in
+    assert!(addr.leading_zeros() >= 6);
+
+    0 | opcode << 26 | addr
+}
 
 /// Create a generic R instruction.
 pub fn make_r_instruction(opcode: usize,
@@ -102,8 +123,8 @@ mod test {
     #[test]
     fn instructions_to_bytes_single_instruction() {
         let instructions = vec![
-        make_r_instruction(0, 0, 0, 0, 0, 0), // no-op
-            ];
+            make_r_instruction(0, 0, 0, 0, 0, 0), // no-op
+        ];
         let should_be: Vec<u8> = vec![0, 0, 0, 0];
         let got = instructions_to_bytes(instructions);
         assert_eq!(got, should_be);
@@ -114,12 +135,31 @@ mod test {
         let instructions = vec![
             add_instruction(1, 1, 2),
             add_instruction(5, 1, 8),
-            ];
+        ];
         let should_be: Vec<u8> = vec![
             0, 34, 8, 32,  // 0b000000_00001_00010_00001_00000_100000
             0, 40, 40, 32,    // 0b000000_00001_01000_00101_00000_000000
         ];
         let got = instructions_to_bytes(instructions);
         assert_eq!(got, should_be);
+    }
+
+    #[test]
+    fn create_valid_jump_instruction() {
+        let addr = 0b0000_0011__1111_1111__0000_1111__0000_1100;
+        let got = jump_instruction(addr);
+        let should_be = 0b0000_1000__1111_1111__1100_0011__1100_0011;
+        assert_eq!(got, should_be);
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_jump() {
+        // The first 4 bits must be zeroes because that's where our
+        // opcode will end up going. Likewise the last 4 must be zeroes
+        // because all instructions are word aligned
+        let addr: i32 = 128;
+        assert_eq!(addr.leading_zeros(), 2);
+        let got = jump_instruction(addr);
     }
 }

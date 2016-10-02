@@ -17,9 +17,9 @@ To-Do List
 - [x] Create a basic processor to represent registers and memory
 - [x] Parse and execute a single R instruction
 - [ ] Parse and execute a single I instruction
-- [ ] Write a compiler that'll turn MIPS assembly code into machine code
+- [ ] Write an assembler that'll turn MIPS assembly code into machine code
       (binary)
-- [ ] Implement jump instructions
+- [x] Implement jump instructions
 - [ ] Add syscalls
 - [ ] Compile then execute some of the basic programs in the `/src/test`
       directory
