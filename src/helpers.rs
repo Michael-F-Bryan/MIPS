@@ -24,6 +24,11 @@ pub fn add_instruction(rd: usize, rs: usize, rt: usize) -> u32 {
     make_r_instruction(0, rs, rt, rd, 0, 0b100000)
 }
 
+pub fn syscall_instruction() -> u32 {
+    // A syscall is really just an R instruction with a funct of 12
+    0xc
+}
+
 /// Create an instruction for jumping to a particular address.
 pub fn jump_instruction(addr: i32) -> u32 {
     let opcode = 0x02;
@@ -161,5 +166,10 @@ mod test {
         let addr: i32 = 128;
         assert_eq!(addr.leading_zeros(), 2);
         let got = jump_instruction(addr);
+    }
+
+    #[test]
+    fn syscall_generates_constant() {
+        assert_eq!(syscall_instruction(), 12);
     }
 }

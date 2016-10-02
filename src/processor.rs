@@ -85,6 +85,10 @@ pub enum Instruction {
     /// A Jump instruction takes the target address as its only argument
     J(i32),
 
+    /// A syscall that uses the contents of $v0 to decide which function
+    /// to run.
+    Syscall,
+
     /// - opcode: machinecode representation of the instruction mnemonic
     /// An invalid instruction.
     Invalid,
@@ -102,13 +106,9 @@ impl Debug for Instruction {
                        funct)
             },
 
-            Instruction::J(addr) => {
-                write!(f, "J({:#x})", addr)
-            },
-
-            Instruction::Invalid => {
-                write!(f, "Invalid")
-            }
+            Instruction::J(addr) => write!(f, "J({:#x})", addr),
+            Instruction::Syscall => write!(f, "Syscall"),
+            Instruction::Invalid => write!(f, "Invalid"),
         }
     }
 }
@@ -128,6 +128,8 @@ pub struct Processor {
 
     /// The program counter - a pointer to the next instruction in memory.
     pub pc: usize,
+
+    stopped: bool,
 }
 
 
@@ -188,10 +190,48 @@ impl Processor {
                 Ok(())
             }
 
+            // Execute a syscall. Note that $v0 must be set with the code of the
+            // function you want to call first.
+            Instruction::Syscall => {
+                let arg = self.registers[constants::RET_1];
+                self.handle_syscall(arg)
+            },
+
             Instruction::Invalid => Err(format!("Invalid instruction: {:#b}", next)),
         }
 
     }
+
+    /// Execute a syscall.
+    ///
+    /// Here are some of the more common syscall codes:
+    ///
+    /// code    call            arguments                  results
+    /// ====    ====            =========                  =======
+    /// 1       print integer   $a0 = integer to print
+    /// 2       print float     $f12 = float to print
+    /// 3       print double    $f12 = float to print
+    /// 4       print string    $a0 = address of
+    ///                             beginning of string
+    /// 5       read integer                               integer stored in $v0
+    /// 6       read float                                 float stored in $f0
+    /// 7       read double                                double stored in $f0
+    /// 8       read string     $a0 = pointer to buffer,   string stored in buffer
+    ///                             $a1 = length of buffer
+    /// 9       sbrk (allocate  $a0 = size needed          $v0 = address of buffer
+    ///             memory
+    ///             buffer)
+    /// 10      exit
+    fn handle_syscall(&mut self, arg: u32) -> Result<(), String> {
+        match arg {
+            10 => {
+                self.stopped = true;
+                Ok(())
+            }
+            _ => Err(format!("Unknown syscall: {}", arg)),
+        }
+    }
+
 
     /// Evaluate a single R instruction, returning Ok() or an error message
     /// if it fails.
@@ -246,6 +286,7 @@ impl Processor {
 impl Default for Processor {
     fn default() -> Processor {
         Processor {
+            stopped: false,
             memory: vec![0; 65536],
             registers: [0; 32],
             pc: 0,
@@ -258,6 +299,10 @@ impl Default for Processor {
 /// constituent components (opcode, data, etc).
 #[inline]
 pub fn parse_instruction(inst: u32) -> Instruction {
+    if inst == 0xc {
+        return Instruction::Syscall;
+    }
+
     let opcode = ((inst >> 26) & 0b0011_1111) as u8;  // Grab the top 6 bits
 
     // Check what type of instruction we have (R, I, J)
@@ -387,6 +432,14 @@ mod test {
     }
 
     #[test]
+    fn parse_syscall_instruction() {
+        let mut inst = 12;
+        let got = parse_instruction(inst);
+        let should_be = Instruction::Syscall;
+        assert_eq!(got, should_be);
+    }
+
+    #[test]
     fn parse_invalid_instruction() {
         let mut inst = 0x00;
         let opcode = 0b0011_1111 << 26;  // 63
@@ -394,6 +447,36 @@ mod test {
         let got = parse_instruction(inst);
         let should_be = Instruction::Invalid;
         assert_eq!(got, should_be);
+    }
+
+    #[test]
+    #[should_panic]
+    fn syscall_with_invalid_code_fails() {
+        let mut cpu = Processor::new();
+        cpu.handle_syscall(123).unwrap();
+    }
+
+    #[test]
+    fn step_one_syscall_instruction() {
+        // Create a program consisting of a single add
+        let inst = helpers::syscall_instruction();
+        let instructions = helpers::instructions_to_bytes(vec![inst]);
+
+        // then load it
+        let mut cpu = Processor::new();
+        cpu.load(instructions).unwrap();
+
+        // Make sure to put a valid syscall code into the $v0 register
+        // (in this case we're using the exit call
+        cpu.registers[constants::RET_1] = 10;
+
+        assert!(!cpu.stopped);
+
+        // step 2: Actually run the instruction
+        cpu.step().unwrap();
+
+        // Then make sure the syscall was applied
+        assert!(cpu.stopped);
     }
 
     #[test]
