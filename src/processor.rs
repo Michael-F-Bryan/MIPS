@@ -606,6 +606,13 @@ mod test {
         assert_eq!(cpu.pc as u32, 42 + offset as u32);
     }
 
+    #[test]
+    fn noop_stops_execution() {
+        let mut cpu = Processor::new();
+        assert_eq!(cpu.memory[cpu.pc], 0);
+        cpu.step().unwrap();
+        assert!(cpu.stopped);
+    }
 
     #[test]
     fn start_addition_program_and_error_when_end_reached() {

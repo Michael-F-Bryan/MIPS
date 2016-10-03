@@ -8,10 +8,26 @@ Note that you'll probably want to use the `nightly` version of the rust
 compiler. Check out [rustup.rs][rustup] for an easy way to manage rust
 versions.
 
-Useful References
------------------
+Usage
+-----
 
-- A MIPS simulator written in Python ([github][2])
+This library comes with a couple useful executables for emulating MIPS programs.
+
+One of these executables is called `dummy_data`, and will create a dummy
+executable at the specified location. This is helpful for testing the emulator
+out on real binaries.
+
+At the moment `dummy_data` produces something similar to this:
+
+    ori $t1, $0, 42  ;  $t1 = 42
+    ori $t2, $0, 7  ;  $t2 = 7
+    add $t1, $t1, $t2  ; $t1 = $t1 + $t2
+    print($t1)
+
+The second executable is the emulator itself. To run an executable, simply
+do:
+
+    mips_emulator /path/to/executable
 
 
 To-Do List
@@ -19,7 +35,7 @@ To-Do List
 
 - [x] Create a basic processor to represent registers and memory
 - [x] Parse and execute a single R instruction
-- [ ] Parse and execute a single I instruction
+- [x] Parse and execute a single I instruction
 - [ ] Write an assembler that'll turn MIPS assembly code into machine code
       (binary)
 - [x] Implement jump instructions
