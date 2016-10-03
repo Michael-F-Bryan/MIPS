@@ -8,6 +8,22 @@ Note that you'll probably want to use the `nightly` version of the rust
 compiler. Check out [rustup.rs][rustup] for an easy way to manage rust
 versions.
 
+
+Installation
+------------
+
+To get the code, you'll need to clone the git repository:
+
+    git clone git@git.michaelfbryan.com:michael/mips.git
+
+Then you can compile and install the project with
+
+    cargo install
+
+Note: You'll need to have `cargo` installed. You'll get access to cargo if
+you are using `rustup`.
+
+
 Usage
 -----
 

@@ -433,7 +433,6 @@ mod test {
     use super::*;
     use helpers;
     use constants::*;
-    use constants;
 
     #[test]
     fn constructor() {
@@ -525,15 +524,15 @@ mod test {
 
     #[test]
     fn parse_syscall_instruction() {
-        let mut inst = 12;
+        let inst = 12;
         let got = parse_instruction(inst);
         let should_be = Instruction::Syscall;
         assert_eq!(got, should_be);
     }
 
     #[test]
-    fn parse_I_instruction() {
-        let mut inst = helpers::make_i_instruction(OP_ORI as usize, TEMP_1, TEMP_0, 42);
+    fn parse_i_instruction() {
+        let inst = helpers::make_i_instruction(OP_ORI as usize, TEMP_1, TEMP_0, 42);
         let got = parse_instruction(inst);
         let should_be = Instruction::I(OP_ORI, TEMP_1 as u8, TEMP_0 as u8, 42);
         assert_eq!(got, should_be);
@@ -633,7 +632,7 @@ mod test {
         let instructions = helpers::instructions_to_bytes(instructions);
 
         let mut cpu = Processor::new();
-        cpu.load(instructions);
+        cpu.load(instructions).unwrap();
 
         cpu.registers[TEMP_0] = 4;
         cpu.registers[TEMP_1] = 38;
@@ -648,7 +647,6 @@ mod test {
     // module so they're all together
     mod r_instructions {
         use super::super::*;
-        use helpers;
         use constants::*;
 
         #[test]
@@ -706,7 +704,6 @@ mod test {
     mod syscalls {
         use super::super::*;
         use constants::*;
-        use std::io::Read;
 
         #[test]
         #[should_panic]

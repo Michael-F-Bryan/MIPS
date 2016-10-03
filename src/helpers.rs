@@ -180,7 +180,7 @@ mod test {
         // because all instructions are word aligned
         let addr: i32 = 128;
         assert_eq!(addr.leading_zeros(), 2);
-        let got = jump_instruction(addr);
+        jump_instruction(addr);
     }
 
     #[test]
@@ -191,8 +191,8 @@ mod test {
     #[test]
     fn create_valid_imm_instruction() {
         let opcode = OP_ORI as usize;  // 0b0000_1101
-        let rs = TEMP_1 as usize;  // 0b0000_1001
-        let rt = TEMP_0 as usize;  // 0b0000_1000
+        let rs: usize = TEMP_1;  // 0b0000_1001
+        let rt: usize = TEMP_0;  // 0b0000_1000
         let imm: u32 = 42;  // 0b101010
         let got = make_i_instruction(opcode, rs, rt, imm);
         let should_be = 0b001101_01001_01000_0000000000101010;
