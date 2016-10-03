@@ -7,7 +7,8 @@
 extern crate byteorder;
 extern crate rustc_serialize;
 extern crate docopt;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate env_logger;
 
 extern crate mips;

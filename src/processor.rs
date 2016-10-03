@@ -65,13 +65,12 @@
 
 use byteorder::{ByteOrder, BigEndian};
 use constants::*;
-use constants;
 use std::fmt::{Debug, Formatter};
 use std::mem::transmute;
 
 
 /// A representation of a single MIPS instruction or an invalid instruction.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Instruction {
     /// An R instruction (e.g. add $s1, $s2, $s3)
     ///
@@ -114,6 +113,9 @@ pub enum Instruction {
     /// - opcode: machinecode representation of the instruction mnemonic
     /// An invalid instruction.
     Invalid,
+
+    /// A no-op instruction
+    Noop,
 }
 
 impl Debug for Instruction {
@@ -136,6 +138,7 @@ impl Debug for Instruction {
             Instruction::J(addr) => write!(f, "J({:#x})", addr),
             Instruction::Syscall => write!(f, "Syscall"),
             Instruction::Invalid => write!(f, "Invalid"),
+            Instruction::Noop => write!(f, "Noop"),
         }
     }
 }
@@ -159,6 +162,12 @@ pub struct Processor {
     stopped: bool,
 }
 
+
+impl Debug for Processor {
+    fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
+        write!(f, "Processor(pc={}, stopped={})", self.pc, self.stopped)
+    }
+}
 
 impl Default for Processor {
     fn default() -> Processor {
@@ -230,14 +239,13 @@ impl Processor {
         let instruction = parse_instruction(next.clone());
         trace!("{:?}", instruction);
 
-        // If it's a no-op, chances are we've run out of instructions to run
-        if next == 0 {
-            warn!("Reached null instruction. Terminating program.");
-            self.stopped = true;
-            return Ok(())
-        }
-
         match instruction {
+            Instruction::Noop => {
+                warn!("Reached null instruction. Terminating program.");
+                self.stopped = true;
+                return Ok(());
+            }
+
             Instruction::R(rd, rs, rt, shift, funct) => {
                 self.handle_r_instruction(rd, rs, rt, shift, funct)
             }
@@ -260,9 +268,7 @@ impl Processor {
 
             Instruction::I(opcode, rs, rt, imm) => self.handle_i_instruction(opcode, rs, rt, imm),
 
-            Instruction::Invalid => {
-                Err(format!("Invalid instruction: {:#b}", next))
-            },
+            Instruction::Invalid => Err(format!("Invalid instruction: {:#b}", next)),
         }
 
     }
@@ -279,7 +285,7 @@ impl Processor {
 
             // print integer in $a0
             1 => {
-                let value = self.registers[ARG_0 as usize];
+                let value = self.registers[ARG_0];
                 debug!("Printing integer: {}", value);
                 print!("{}", value);
                 Ok(())
@@ -300,27 +306,27 @@ impl Processor {
                             funct: u8)
                             -> Result<(), String> {
         match funct {
-            constants::FUNCT_ADD => {
+            FUNCT_ADD => {
                 let a = self.registers[rs as usize];
                 let b = self.registers[rt as usize];
-                self.registers[rd as usize] =  a + b;
+                self.registers[rd as usize] = a + b;
                 debug!("${} = {} + {}", rd, a, b);
                 Ok(())
             }
 
-            constants::FUNCT_AND => {
+            FUNCT_AND => {
                 self.registers[rd as usize] = self.registers[rs as usize] &
-                    self.registers[rt as usize];
+                                              self.registers[rt as usize];
                 Ok(())
             }
 
-            constants::FUNCT_DIV => {
+            FUNCT_DIV => {
                 self.registers[rd as usize] = self.registers[rs as usize] /
-                    self.registers[rt as usize];
+                                              self.registers[rt as usize];
                 Ok(())
             }
 
-            constants::FUNCT_MULT => {
+            FUNCT_MULT => {
                 self.registers[rd as usize] = self.reg(rs) * self.reg(rt);
                 Ok(())
             }
@@ -333,7 +339,7 @@ impl Processor {
     /// Evaluate a single I instruction.
     fn handle_i_instruction(&mut self, opcode: u8, rs: u8, rt: u8, imm: u32) -> Result<(), String> {
         match opcode {
-            constants::OP_ORI => {
+            OP_ORI => {
                 self.registers[rs as usize] = self.reg(rt) | imm;
                 Ok(())
             }
@@ -367,6 +373,10 @@ pub fn parse_instruction(inst: u32) -> Instruction {
         return Instruction::Syscall;
     }
 
+    if inst == 0x00 {
+        return Instruction::Noop;
+    }
+
     let opcode = ((inst >> 26) & 0b0011_1111) as u8;  // Grab the top 6 bits
 
     // Check what type of instruction we have (R, I, J)
@@ -386,7 +396,7 @@ pub fn parse_instruction(inst: u32) -> Instruction {
         }
 
         // Jump instructions
-        constants::JMP => {
+        JMP => {
             let addr = (inst & 0b0000_0011__1111_1111__1111_1111__1111_1111) << 2;
 
             // Transmute the address (which is a u32) into a signed number
@@ -397,18 +407,18 @@ pub fn parse_instruction(inst: u32) -> Instruction {
         }
 
         // Otherwise assume it's an immediate
-        constants::OP_ORI => {
+        OP_ORI => {
             let rs = ((inst >> 21) & 0b0001_1111) as u8;
             let rt = ((inst >> 16) & 0b0001_1111) as u8;
             let imm = inst & 0xff_ff;
-            Instruction::I(constants::OP_ORI, rs, rt, imm)
+            Instruction::I(OP_ORI, rs, rt, imm)
         }
 
-        constants::OP_ADDI => {
+        OP_ADDI => {
             let rs = ((inst >> 21) & 0b0001_1111) as u8;
             let rt = ((inst >> 16) & 0b0001_1111) as u8;
             let imm = inst & 0xff_ff;
-            Instruction::I(constants::OP_ADDI, rs, rt, imm)
+            Instruction::I(OP_ADDI, rs, rt, imm)
 
         }
 
@@ -452,17 +462,17 @@ mod test {
 
         // Double check the first 42 elements equal 7
         assert!(cpu.memory
-                .to_vec()
-                .iter()
-                .take(42)
-                .all(|e| *e == 0x07));
+            .to_vec()
+            .iter()
+            .take(42)
+            .all(|e| *e == 0x07));
 
         // And make sure the rest of RAM is still zeroed out
         assert!(cpu.memory
-                .to_vec()
-                .iter()
-                .skip(42)
-                .all(|e| *e == 0x00));
+            .to_vec()
+            .iter()
+            .skip(42)
+            .all(|e| *e == 0x00));
     }
 
     #[test]
