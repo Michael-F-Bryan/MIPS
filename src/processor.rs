@@ -230,6 +230,13 @@ impl Processor {
         let instruction = parse_instruction(next.clone());
         trace!("{:?}", instruction);
 
+        // If it's a no-op, chances are we've run out of instructions to run
+        if next == 0 {
+            warn!("Reached null instruction. Terminating program.");
+            self.stopped = true;
+            return Ok(())
+        }
+
         match instruction {
             Instruction::R(rd, rs, rt, shift, funct) => {
                 self.handle_r_instruction(rd, rs, rt, shift, funct)
@@ -253,7 +260,9 @@ impl Processor {
 
             Instruction::I(opcode, rs, rt, imm) => self.handle_i_instruction(opcode, rs, rt, imm),
 
-            Instruction::Invalid => Err(format!("Invalid instruction: {:#b}", next)),
+            Instruction::Invalid => {
+                Err(format!("Invalid instruction: {:#b}", next))
+            },
         }
 
     }
