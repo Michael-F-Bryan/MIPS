@@ -9,7 +9,7 @@ extern crate rustc_serialize;
 extern crate docopt;
 
 pub mod processor;
-mod constants;
+pub mod constants;
 pub mod helpers;
 
 use std::fs::File;
@@ -80,15 +80,9 @@ fn run_program(filename: String, args: Args) -> u32 {
     }
 
     // Now keep executing instructions until we hit an error
-    loop {
-        let result = cpu.step();
-        match result {
-            Err(e) => {
-                println!("ERROR: {}", e);
-                break
-            },
-            Ok(()) => {},
-        }
+    let result = cpu.start();
+    if result.is_err() {
+        println!("ERROR: {}", result.unwrap_err());
     }
 
     // Print the contents of the registers and the program counter

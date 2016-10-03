@@ -65,6 +65,7 @@
 
 
 use byteorder::{ByteOrder, BigEndian};
+use constants::*;
 use constants;
 use std::fmt::{Debug, Formatter};
 use std::mem::transmute;
@@ -159,6 +160,19 @@ impl Processor {
         Processor::default()
     }
 
+    /// Start the emulator. It will keep running until there is either
+    /// an exit syscall, or an error.
+    pub fn start(&mut self) -> Result<(), String> {
+        while self.running() {
+            let result = self.step();
+            if result.is_err() {
+                return result
+            }
+        }
+
+        Ok(())
+    }
+
     /// Load a MIPS program (list of bytes) into memory starting at
     /// address 0x00
     pub fn load(&mut self, program: Vec<u8>) -> Result<usize, String> {
@@ -213,7 +227,7 @@ impl Processor {
             // Execute a syscall. Note that $v0 must be set with the code of the
             // function you want to call first.
             Instruction::Syscall => {
-                let arg = self.registers[constants::RET_1];
+                let arg = self.registers[RET_1];
                 self.handle_syscall(arg)
             },
 
@@ -280,7 +294,15 @@ impl Processor {
 
     /// Get the program counter's current value.
     pub fn program_counter(&self) -> usize {
-        self.pc.clone()
+        self.pc
+    }
+
+    pub fn running(&self) -> bool {
+        !self.stopped
+    }
+
+    pub fn stopped(&self) -> bool {
+        self.stopped
     }
 }
 
@@ -342,6 +364,7 @@ pub fn parse_instruction(inst: u32) -> Instruction {
 mod test {
     use super::*;
     use helpers;
+    use constants::*;
     use constants;
 
     #[test]
@@ -469,7 +492,7 @@ mod test {
 
         // Make sure to put a valid syscall code into the $v0 register
         // (in this case we're using the exit call
-        cpu.registers[constants::RET_1] = 10;
+        cpu.registers[RET_1] = 10;
 
         assert!(!cpu.stopped);
 
@@ -483,7 +506,7 @@ mod test {
     #[test]
     fn step_one_add_instruction() {
         // Create a program consisting of a single add
-        let inst = helpers::add_instruction(1, 1, 2);  // add r1, r1, r2
+        let inst = helpers::add_instruction(TEMP_0, TEMP_0, TEMP_1);  // add r1, r1, r2
         let instructions = vec![inst];
         let instructions_as_bytes = helpers::instructions_to_bytes(instructions);
 
@@ -492,14 +515,14 @@ mod test {
         cpu.load(instructions_as_bytes).unwrap();
 
         // step 1: Put something interesting in registers 1 and 2
-        cpu.registers[1] = 1;
-        cpu.registers[2] = 1;
+        cpu.registers[TEMP_0] = 1;
+        cpu.registers[TEMP_1] = 1;
 
         // step 2: Actually run the instruction
         cpu.step().unwrap();
 
         // step 3: Check that 1 + 1 = 2
-        assert_eq!(cpu.registers[1], 2);
+        assert_eq!(cpu.registers[TEMP_0], 2);
 
         // step 4: Profit!!!
     }
@@ -525,55 +548,87 @@ mod test {
     }
 
 
+    #[test]
+    fn start_addition_program_and_error_when_end_reached() {
+        let instructions = vec![
+            helpers::add_instruction(TEMP_0, TEMP_0, TEMP_1),  // add r1, r1, r2
+            helpers::syscall_instruction(),
+        ];
+        let instructions = helpers::instructions_to_bytes(instructions);
+
+        let mut cpu = Processor::new();
+        cpu.load(instructions);
+
+        cpu.registers[TEMP_0] = 4;
+        cpu.registers[TEMP_1] = 38;
+
+        let result = cpu.start();
+
+        assert!(result.is_err());
+        assert_eq!(cpu.registers[TEMP_0], 42);
+    }
+
     // Put tests for each individual R instruction in its own sub
     // module so they're all together
     mod r_instructions {
         use super::super::*;
         use helpers;
-        use constants;
+        use constants::*;
 
         #[test]
         fn execute_single_r_add_instruction() {
             let mut cpu = Processor::new();
 
             // Put something interesting in registers 1 and 2
-            cpu.registers[1] = 42;
-            cpu.registers[2] = 7;
+            cpu.registers[TEMP_0] = 42;
+            cpu.registers[TEMP_1] = 7;
 
             // Run the instruction r1 = r1+r2
-            cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_ADD).unwrap();
+            cpu.handle_r_instruction(TEMP_0 as u8,
+                                     TEMP_0 as u8,
+                                     TEMP_1 as u8,
+                                     0, FUNCT_ADD).unwrap();
 
             // Check the addition was correct
-            assert_eq!(cpu.registers[1], 49);
+            assert_eq!(cpu.registers[TEMP_0], 49);
         }
 
         #[test]
         fn execute_single_r_and_instruction() {
             let mut cpu = Processor::new();
-            cpu.registers[1] = 42;
-            cpu.registers[2] = 7;
-            cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_AND).unwrap();
-            assert_eq!(cpu.registers[1], 42 & 7);
+            cpu.registers[TEMP_0] = 42;
+            cpu.registers[TEMP_1] = 7;
+            cpu.handle_r_instruction(TEMP_0 as u8,
+                                     TEMP_0 as u8,
+                                     TEMP_1 as u8,
+                                     0, FUNCT_AND).unwrap();
+            assert_eq!(cpu.registers[TEMP_0], 42 & 7);
         }
 
         #[test]
         fn execute_single_r_mult_instruction() {
             let mut cpu = Processor::new();
-            cpu.registers[1] = 42;
-            cpu.registers[2] = 7;
-            cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_MULT).unwrap();
-            assert_eq!(cpu.registers[1], 42 * 7);
+            cpu.registers[TEMP_0] = 42;
+            cpu.registers[TEMP_1] = 7;
+            cpu.handle_r_instruction(TEMP_0 as u8,
+                                     TEMP_0 as u8,
+                                     TEMP_1 as u8,
+                                     0, FUNCT_MULT).unwrap();
+            assert_eq!(cpu.registers[TEMP_0], 42 * 7);
         }
 
         #[test]
         fn execute_single_r_div_instruction() {
             let mut cpu = Processor::new();
-            cpu.registers[1] = 43;
-            cpu.registers[2] = 7;
-            cpu.handle_r_instruction(1, 1, 2, 0, constants::FUNCT_DIV).unwrap();
+            cpu.registers[TEMP_0] = 43;
+            cpu.registers[TEMP_1] = 7;
+            cpu.handle_r_instruction(TEMP_0 as u8,
+                                     TEMP_0 as u8,
+                                     TEMP_1 as u8,
+                                     0, FUNCT_DIV).unwrap();
 
             // Note: this is integer division
-            assert_eq!(cpu.registers[1], 6);
+            assert_eq!(cpu.registers[TEMP_0], 6);
         }
     }
 
