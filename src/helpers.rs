@@ -38,9 +38,7 @@ pub fn jump_instruction(addr: i32) -> u32 {
     // Transmute the address from an i32 to a u32
     // This is perfectly safe because they are the same size and
     // we're just changing what the compiler interprets the bits as
-    let addr = unsafe {
-        transmute::<i32, u32>(addr)
-    };
+    let addr = unsafe { transmute::<i32, u32>(addr) };
 
     // Discard the last two bits because we know an address is always
     // a multiple of 4

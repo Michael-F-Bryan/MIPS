@@ -72,7 +72,7 @@ fn run_program(filename: String, args: Args) -> u32 {
             if args.flag_verbose {
                 println!("Program loaded");
             }
-        },
+        }
         Err(e) => {
             println!("ERROR: {}", e);
             return 1;
@@ -87,7 +87,7 @@ fn run_program(filename: String, args: Args) -> u32 {
 
     // Print the contents of the registers and the program counter
     if args.flag_verbose {
-        println!("Program Counter: {}", cpu.program_counter()-4);
+        println!("Program Counter: {}", cpu.program_counter() - 4);
         println!("{:?}", cpu.registers);
     }
 

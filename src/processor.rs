@@ -119,13 +119,14 @@ impl Debug for Instruction {
     fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
         match *self {
             Instruction::R(rd, rs, rt, shift, funct) => {
-                write!(f, "R({:#x}, {:#x}, {:#x}, {:#x}, {:#x})",
+                write!(f,
+                       "R({:#x}, {:#x}, {:#x}, {:#x}, {:#x})",
                        rd,
                        rs,
                        rt,
                        shift,
                        funct)
-            },
+            }
 
             Instruction::J(addr) => write!(f, "J({:#x})", addr),
             Instruction::Syscall => write!(f, "Syscall"),
@@ -154,6 +155,18 @@ pub struct Processor {
 }
 
 
+impl Default for Processor {
+    fn default() -> Processor {
+        Processor {
+            stopped: false,
+            memory: vec![0; 65536],
+            registers: [0; 32],
+            pc: 0,
+        }
+    }
+}
+
+
 impl Processor {
     /// Create a new processor with its memory and registers cleared.
     pub fn new() -> Processor {
@@ -166,7 +179,7 @@ impl Processor {
         while self.running() {
             let result = self.step();
             if result.is_err() {
-                return result
+                return result;
             }
         }
 
@@ -229,7 +242,7 @@ impl Processor {
             Instruction::Syscall => {
                 let arg = self.registers[RET_1];
                 self.handle_syscall(arg)
-            },
+            }
 
             Instruction::Invalid => Err(format!("Invalid instruction: {:#b}", next)),
         }
@@ -239,10 +252,18 @@ impl Processor {
     /// Execute a syscall.
     fn handle_syscall(&mut self, arg: u32) -> Result<(), String> {
         match arg {
+            // exit
             10 => {
                 self.stopped = true;
                 Ok(())
             }
+
+            // print integer
+            1 => {
+                print!("{}", self.registers[ARG_0 as usize]);
+                Ok(())
+            }
+
             _ => Err(format!("Unknown syscall: {}", arg)),
         }
     }
@@ -260,19 +281,19 @@ impl Processor {
         match funct {
             constants::FUNCT_ADD => {
                 self.registers[rd as usize] = self.registers[rs as usize] +
-                    self.registers[rt as usize];
+                                              self.registers[rt as usize];
                 Ok(())
             }
 
             constants::FUNCT_AND => {
                 self.registers[rd as usize] = self.registers[rs as usize] &
-                    self.registers[rt as usize];
+                                              self.registers[rt as usize];
                 Ok(())
             }
 
             constants::FUNCT_DIV => {
                 self.registers[rd as usize] = self.registers[rs as usize] /
-                    self.registers[rt as usize];
+                                              self.registers[rt as usize];
                 Ok(())
             }
 
@@ -297,26 +318,11 @@ impl Processor {
         self.pc
     }
 
+    /// Check whether the emulator is running or not.
     pub fn running(&self) -> bool {
         !self.stopped
     }
-
-    pub fn stopped(&self) -> bool {
-        self.stopped
-    }
 }
-
-impl Default for Processor {
-    fn default() -> Processor {
-        Processor {
-            stopped: false,
-            memory: vec![0; 65536],
-            registers: [0; 32],
-            pc: 0,
-        }
-    }
-}
-
 
 /// Parse a single MIPS instruction and break it up into its
 /// constituent components (opcode, data, etc).
@@ -342,7 +348,7 @@ pub fn parse_instruction(inst: u32) -> Instruction {
             let funct = (inst & 0b0011_1111) as u8;
 
             Instruction::R(rs, rt, rd, shift, funct)
-        },
+        }
 
         // Jump instructions
         constants::JMP => {
@@ -394,17 +400,17 @@ mod test {
 
         // Double check the first 42 elements equal 7
         assert!(cpu.memory
-                .to_vec()
-                .iter()
-                .take(42)
-                .all(|e| *e == 0x07));
+            .to_vec()
+            .iter()
+            .take(42)
+            .all(|e| *e == 0x07));
 
         // And make sure the rest of RAM is still zeroed out
         assert!(cpu.memory
-                .to_vec()
-                .iter()
-                .skip(42)
-                .all(|e| *e == 0x00));
+            .to_vec()
+            .iter()
+            .skip(42)
+            .all(|e| *e == 0x00));
     }
 
     #[test]
@@ -474,13 +480,6 @@ mod test {
     }
 
     #[test]
-    #[should_panic]
-    fn syscall_with_invalid_code_fails() {
-        let mut cpu = Processor::new();
-        cpu.handle_syscall(123).unwrap();
-    }
-
-    #[test]
     fn step_one_syscall_instruction() {
         // Create a program consisting of a single add
         let inst = helpers::syscall_instruction();
@@ -540,7 +539,7 @@ mod test {
 
         // Then load the instructions there
         for (i, byte) in instructions.iter().enumerate() {
-            cpu.memory[cpu.pc+i] = *byte;
+            cpu.memory[cpu.pc + i] = *byte;
         }
 
         cpu.step().unwrap();
@@ -584,10 +583,8 @@ mod test {
             cpu.registers[TEMP_1] = 7;
 
             // Run the instruction r1 = r1+r2
-            cpu.handle_r_instruction(TEMP_0 as u8,
-                                     TEMP_0 as u8,
-                                     TEMP_1 as u8,
-                                     0, FUNCT_ADD).unwrap();
+            cpu.handle_r_instruction(TEMP_0 as u8, TEMP_0 as u8, TEMP_1 as u8, 0, FUNCT_ADD)
+                .unwrap();
 
             // Check the addition was correct
             assert_eq!(cpu.registers[TEMP_0], 49);
@@ -598,10 +595,8 @@ mod test {
             let mut cpu = Processor::new();
             cpu.registers[TEMP_0] = 42;
             cpu.registers[TEMP_1] = 7;
-            cpu.handle_r_instruction(TEMP_0 as u8,
-                                     TEMP_0 as u8,
-                                     TEMP_1 as u8,
-                                     0, FUNCT_AND).unwrap();
+            cpu.handle_r_instruction(TEMP_0 as u8, TEMP_0 as u8, TEMP_1 as u8, 0, FUNCT_AND)
+                .unwrap();
             assert_eq!(cpu.registers[TEMP_0], 42 & 7);
         }
 
@@ -610,10 +605,8 @@ mod test {
             let mut cpu = Processor::new();
             cpu.registers[TEMP_0] = 42;
             cpu.registers[TEMP_1] = 7;
-            cpu.handle_r_instruction(TEMP_0 as u8,
-                                     TEMP_0 as u8,
-                                     TEMP_1 as u8,
-                                     0, FUNCT_MULT).unwrap();
+            cpu.handle_r_instruction(TEMP_0 as u8, TEMP_0 as u8, TEMP_1 as u8, 0, FUNCT_MULT)
+                .unwrap();
             assert_eq!(cpu.registers[TEMP_0], 42 * 7);
         }
 
@@ -622,13 +615,42 @@ mod test {
             let mut cpu = Processor::new();
             cpu.registers[TEMP_0] = 43;
             cpu.registers[TEMP_1] = 7;
-            cpu.handle_r_instruction(TEMP_0 as u8,
-                                     TEMP_0 as u8,
-                                     TEMP_1 as u8,
-                                     0, FUNCT_DIV).unwrap();
+            cpu.handle_r_instruction(TEMP_0 as u8, TEMP_0 as u8, TEMP_1 as u8, 0, FUNCT_DIV)
+                .unwrap();
 
             // Note: this is integer division
             assert_eq!(cpu.registers[TEMP_0], 6);
+        }
+    }
+
+
+    /// Package all tests for basic syscalls into their own module, similar
+    /// to what's done with the R instructions
+    mod syscalls {
+        use super::super::*;
+        use constants::*;
+        use std::io::Read;
+
+        #[test]
+        #[should_panic]
+        fn syscall_with_invalid_code_fails() {
+            let mut cpu = Processor::new();
+            cpu.handle_syscall(123).unwrap();
+        }
+
+        #[test]
+        fn exit() {
+            let mut cpu = Processor::new();
+            assert_eq!(cpu.stopped, false);
+            cpu.handle_syscall(10).unwrap();
+            assert_eq!(cpu.stopped, true);
+        }
+
+        #[test]
+        fn print_integer() {
+            let mut cpu = Processor::new();
+            cpu.registers[ARG_0] = 42;
+            cpu.handle_syscall(1).unwrap();
         }
     }
 
@@ -636,11 +658,11 @@ mod test {
     // fn dummy_data() {
     //     use std::fs::File;
     //     use std::io::Write;
-    //     let inst = helpers::add_instruction(1, 1, 2);  // add r1, r1, r2
-    //     let instructions = vec![inst];
+    //     let instructions = vec![
+    //         helpers::add_instruction(TEMP_0, TEMP_0, TEMP_1), // add r1, r1, r2
+    //     ];
     //     let instructions_as_bytes = helpers::instructions_to_bytes(instructions);
     //     let mut f = File::create("add").unwrap();
     //     f.write(&instructions_as_bytes);
-
     // }
 }

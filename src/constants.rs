@@ -1,6 +1,7 @@
-//! Define some constants to make accessing the individual registers easier
+//! Define some constants to make accessing individual registers easier.
 
 #![allow(dead_code)]
+#![allow(missing_docs)]
 
 pub const ZERO: usize = 0;
 pub const RET_1: usize = 2;
