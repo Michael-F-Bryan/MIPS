@@ -47,7 +47,7 @@ pub fn jump_instruction(addr: i32) -> u32 {
     // Make sure the leading 6 bits are zeroes so we can fit the opcode in
     assert!(addr.leading_zeros() >= 6);
 
-    0 | opcode << 26 | addr
+    opcode << 26 | addr
 }
 
 /// Create a generic R instruction.
@@ -67,7 +67,7 @@ pub fn make_r_instruction(opcode: usize,
     assert!(shift < (1 << 5));
     assert!(funct < (1 << 6));
 
-    let inst = 0 | opcode << 26 | rs << 21 | rt << 16 | rd << 11 | shift << 6 | funct;
+    let inst = opcode << 26 | rs << 21 | rt << 16 | rd << 11 | shift << 6 | funct;
 
     inst as u32
 }
@@ -81,7 +81,7 @@ pub fn make_i_instruction(opcode: usize, rs: usize, rt: usize, imm: u32) -> u32 
     assert!(rt < (1 << 5));
     assert!(imm < (1 << 16));
 
-    let inst = 0 | opcode << 26 | rs << 21 | rt << 16 | imm as usize;
+    let inst = opcode << 26 | rs << 21 | rt << 16 | imm as usize;
 
     inst as u32
 }

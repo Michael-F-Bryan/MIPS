@@ -236,14 +236,14 @@ impl Processor {
     /// Load and execute the next instruction.
     pub fn step(&mut self) -> Result<(), String> {
         let next = try!(self.next_instruction());
-        let instruction = parse_instruction(next.clone());
+        let instruction = parse_instruction(next);
         trace!("{:?}", instruction);
 
         match instruction {
             Instruction::Noop => {
                 warn!("Reached null instruction. Terminating program.");
                 self.stopped = true;
-                return Ok(());
+                Ok(())
             }
 
             Instruction::R(rd, rs, rt, shift, funct) => {
@@ -351,7 +351,7 @@ impl Processor {
     /// Get the value of a register
     #[inline]
     pub fn reg(&self, index: u8) -> u32 {
-        self.registers[index as usize].clone()
+        self.registers[index as usize]
     }
 
     /// Get the program counter's current value.

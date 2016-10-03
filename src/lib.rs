@@ -14,6 +14,9 @@
 #![deny(unused_qualifications)]
 #![deny(unused_imports)]
 
+// Support for using clippy
+#![cfg_attr(feature = "dev", plugin(clippy))]
+
 extern crate byteorder;
 extern crate rustc_serialize;
 extern crate docopt;
