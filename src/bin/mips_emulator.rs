@@ -7,16 +7,16 @@
 extern crate byteorder;
 extern crate rustc_serialize;
 extern crate docopt;
+#[macro_use] extern crate log;
+extern crate env_logger;
 
-pub mod processor;
-pub mod constants;
-pub mod helpers;
+extern crate mips;
+
+use mips::Processor;
 
 use std::fs::File;
 use std::io::Read;
 use std::process::exit;
-
-pub use processor::{Instruction, Processor, parse_instruction};
 
 
 docopt!(Args derive Debug, "
@@ -35,6 +35,9 @@ Options:
 
 fn main() {
     let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
+    env_logger::init().unwrap();
+
+    debug!("Command Line Arguments -> {:?}", args);
 
     if args.flag_version {
         println!("{} v{}", "mips", env!("CARGO_PKG_VERSION"));
@@ -54,27 +57,21 @@ fn run_program(filename: String, args: Args) -> u32 {
     f.read_to_end(&mut data).expect("Unable to read data");
 
     if args.flag_verbose {
-        println!("Read {:#} bytes from {}", data.len(), filename);
+        info!("Read {:#} bytes from {}", data.len(), filename);
     }
 
     // Create a new processor
-    let mut cpu = processor::Processor::new();
-
-    // For the test, put 1 in registers 1 and 2, then print the
-    // contents of the registers for the user
-    cpu.registers[1] = 1;
-    cpu.registers[2] = 1;
-    println!("{:?}", cpu.registers);
+    let mut cpu = Processor::new();
 
     // And load the program into memory
     match cpu.load(data) {
         Ok(_) => {
             if args.flag_verbose {
-                println!("Program loaded");
+                info!("Program loaded");
             }
         }
         Err(e) => {
-            println!("ERROR: {}", e);
+            error!("{}", e);
             return 1;
         }
     }
@@ -82,7 +79,7 @@ fn run_program(filename: String, args: Args) -> u32 {
     // Now keep executing instructions until we hit an error
     let result = cpu.start();
     if result.is_err() {
-        println!("ERROR: {}", result.unwrap_err());
+        error!("{}", result.unwrap_err());
     }
 
     // Print the contents of the registers and the program counter

@@ -3,8 +3,14 @@ name = "mips"
 version = "0.1.0"
 authors = ["Michael Bryan <michaelfbryan@gmail.com>"]
 
+[lib]
+name = "mips"
+path = "src/lib.rs"
+
 [dependencies]
-byteorder = "0.5"
-rustc-serialize = "0.3"
-docopt = "0.6"
-docopt_macros = "0.6"
+byteorder = "*"
+rustc-serialize = "*"
+docopt = "*"
+docopt_macros = "*"
+env_logger = "*"
+log = "*"

@@ -72,10 +72,25 @@ pub fn make_r_instruction(opcode: usize,
     inst as u32
 }
 
+/// Create a generic R instruction.
+pub fn make_i_instruction(opcode: usize, rs: usize, rt: usize, imm: u32) -> u32 {
+    // Do a bounds check and panic if we tried to make an invalid
+    // instruction
+    assert!(opcode < (1 << 6));
+    assert!(rs < (1 << 5));
+    assert!(rt < (1 << 5));
+    assert!(imm < (1 << 16));
+
+    let inst = 0 | opcode << 26 | rs << 21 | rt << 16 | imm as usize;
+
+    inst as u32
+}
+
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use constants::*;
 
     #[test]
     fn make_r_instruction_gives_expected() {
@@ -171,5 +186,16 @@ mod test {
     #[test]
     fn syscall_generates_constant() {
         assert_eq!(syscall_instruction(), 12);
+    }
+
+    #[test]
+    fn create_valid_imm_instruction() {
+        let opcode = OP_ORI as usize;  // 0b0000_1101
+        let rs = TEMP_1 as usize;  // 0b0000_1001
+        let rt = TEMP_0 as usize;  // 0b0000_1000
+        let imm: u32 = 42;  // 0b101010
+        let got = make_i_instruction(opcode, rs, rt, imm);
+        let should_be = 0b001101_01001_01000_0000000000101010;
+        assert_eq!(got, should_be as u32);
     }
 }

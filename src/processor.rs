@@ -1,67 +1,66 @@
 //! The central processing unit for this MIPS emulator.
+//! //! The registers used, and their common names, are as follows:
 //!
-//! The registers used, and their common names, are as follows:
-//!
-//!     Number         Name           Comments
-//!     ======         ====           ========
-//!     $0             $zero          Always zero
-//!     $1             $at            Reserved for assembler
-//!     $2, $3         $v0, $v1       First and second return values, respectively
-//!     $4, ..., $7    $a0, ..., $a3  First four arguments to functions
-//!     $8, ..., $15   $t0, ..., $t7  Temporary registers
-//!     $16, ..., $23  $s0, ..., $s7  Saved registers
-//!     $24, $25       $t8, $t9       More temporary registers
-//!     $26, $27       $k0, $k1       Reserved for kernel (operating system)
-//!     $28            $gp            Global pointer
-//!     $29            $sp            Stack pointer
-//!     $30            $fp            Frame pointer
-//!     $31            $ra            Return address //! //! MIPS uses the following opcodes:
+//!     Number        |  Name           | Comments
+//!     --------------+-----------------+---------
+//!     $0            |  $zero          | Always zero
+//!     $1            |  $at            | Reserved for assembler
+//!     $2, $3        |  $v0, $v1       | First and second return values, respectively
+//!     $4, ..., $7   |  $a0, ..., $a3  | First four arguments to functions
+//!     $8, ..., $15  |  $t0, ..., $t7  | Temporary registers
+//!     $16, ..., $23 |  $s0, ..., $s7  | Saved registers
+//!     $24, $25      |  $t8, $t9       | More temporary registers
+//!     $26, $27      |  $k0, $k1       | Reserved for kernel (operating system)
+//!     $28           |  $gp            | Global pointer
+//!     $29           |  $sp            | Stack pointer
+//!     $30           |  $fp            | Frame pointer
+//!     $31           |  $ra            | Return address //! //! MIPS uses the following opcodes:
 //!
 //! Here is a list of all the instructions supported by MIPS:
 //!
-//!     Mnemonic    Meaning                  Type     Opcode      Funct
-//!     ========    =======                  ====     ======      =====
-//!     add         Add                      R        0x00        0x20
-//!     addi        Add Immediate            I        0x08        NA
-//!     addiu       Add Unsigned Immediate   I        0x09        NA
-//!     addu        Bitwise Add Unsigned     R        0x00        0x21
-//!     and         Bitwise AND              R        0x00        0x24
-//!     andi        Bitwise AND Immediate    I        0x0C        NA
-//!     beq         Branch if Equal          I        0x04        NA
-//!     bne         Branch Not Equal         I        0x05        NA
-//!     div         Divide                   R        0x00        x1A
-//!     divu        Unsigned Divide          R        0x00        0x1B
-//!     j           Jump to Address          J        0x02        NA
-//!     jal         Jump and Link            J        0x03        NA
-//!     jr          Jump to Address          R        0x00        0x08
-//!     lbu         Load Byte Unsigned       I        0x24        NA
-//!     lhu         Load Halfword Unsigned   I        0x25        NA
-//!     lui         Load Upper Immediate     I        0x0F        NA
-//!     lw          Load Word                I        0x23        NA
-//!     mfhi        Move from HI Register    R        0x00        0x10
-//!     mflo        Move from LO Register    R        0x00        0x12
-//!     mfc0        Move from Coprocessor 0  R        0x10        NA
-//!     mult        Multiply                 R        0x00        0x18
-//!     multu       Unsigned Multiply        R        0x00        0x19
-//!     nor         Bitwise NOR              R        0x00        0x27
-//!     xor         Bitwise XOR              R        0x00        0x26
-//!     or          Bitwise OR               R        0x00        0x25
-//!     ori         Bitwise OR Immediate     I        0x0D        NA
-//!     sb          Store Byte               I        0x28        NA
-//!     sh          Store Halfword           I        0x29        NA
-//!     slt         Set to 1 if Less Than    R        0x00        0x2A
-//!     slti        Set to 1 if Less         I        0x0A        NA
-//!                     Than Immediate
-//!     sltiu       Set to 1 if Less Than    I        0x0B        NA
-//!                     Unsigned Immediate
-//!     sltu        Set to 1 if Less Than    R        0x00        0x2B
-//!                     Unsigned
-//!     sll         Logical Shift Left       R        0x00        0x00
-//!     srl         Logical Shift Right      R        0x00        0x02
-//!     sra         Arithmetic Shift Right   R        0x00        0x03
-//!     sub         Subtract                 R        0x00        0x22
-//!     subu        Unsigned Subtract        R        0x00        0x23
-//!     sw          Store Word               I        0x2B        NA
+//! Mnemonic |  Meaning                  | Type   |  Opcode    |  Funct
+//! ---------+---------------------------+--------+------------+-------
+//! add      |  Add                      | R      |  0x00      |  0x20
+//! addi     |  Add Immediate            | I      |  0x08      |  NA
+//! addiu    |  Add Unsigned Immediate   | I      |  0x09      |  NA
+//! addu     |  Bitwise Add Unsigned     | R      |  0x00      |  0x21
+//! and      |  Bitwise AND              | R      |  0x00      |  0x24
+//! andi     |  Bitwise AND Immediate    | I      |  0x0C      |  NA
+//! beq      |  Branch if Equal          | I      |  0x04      |  NA
+//! bne      |  Branch Not Equal         | I      |  0x05      |  NA
+//! div      |  Divide                   | R      |  0x00      |  x1A
+//! divu     |  Unsigned Divide          | R      |  0x00      |  0x1B
+//! j        |  Jump to Address          | J      |  0x02      |  NA
+//! jal      |  Jump and Link            | J      |  0x03      |  NA
+//! jr       |  Jump to Address          | R      |  0x00      |  0x08
+//! lbu      |  Load Byte Unsigned       | I      |  0x24      |  NA
+//! lhu      |  Load Halfword Unsigned   | I      |  0x25      |  NA
+//! lui      |  Load Upper Immediate     | I      |  0x0F      |  NA
+//! lw       |  Load Word                | I      |  0x23      |  NA
+//! mfhi     |  Move from HI Register    | R      |  0x00      |  0x10
+//! mflo     |  Move from LO Register    | R      |  0x00      |  0x12
+//! mfc0     |  Move from Coprocessor 0  | R      |  0x10      |  NA
+//! mult     |  Multiply                 | R      |  0x00      |  0x18
+//! multu    |  Unsigned Multiply        | R      |  0x00      |  0x19
+//! nor      |  Bitwise NOR              | R      |  0x00      |  0x27
+//! xor      |  Bitwise XOR              | R      |  0x00      |  0x26
+//! or       |  Bitwise OR               | R      |  0x00      |  0x25
+//! ori      |  Bitwise OR Immediate     | I      |  0x0D      |  NA
+//! sb       |  Store Byte               | I      |  0x28      |  NA
+//! sh       |  Store Halfword           | I      |  0x29      |  NA
+//! slt      |  Set to 1 if Less Than    | R      |  0x00      |  0x2A
+//! slti     |  Set to 1 if Less         | I      |  0x0A      |  NA
+//!          |      Than Immediate
+//! sltiu    |  Set to 1 if Less Than    | I      |  0x0B      |  NA
+//!          |      Unsigned Immediate
+//! sltu     |  Set to 1 if Less Than    | R      |  0x00      |  0x2B
+//!          |      Unsigned
+//! sll      |  Logical Shift Left       | R      |  0x00      |  0x00
+//! srl      |  Logical Shift Right      | R      |  0x00      |  0x02
+//! sra      |  Arithmetic Shift Right   | R      |  0x00      |  0x03
+//! sub      |  Subtract                 | R      |  0x00      |  0x22
+//! subu     |  Unsigned Subtract        | R      |  0x00      |  0x23
+//! sw       |  Store Word               | I      |  0x2B      |  NA
 
 
 use byteorder::{ByteOrder, BigEndian};
@@ -92,23 +91,25 @@ pub enum Instruction {
     ///
     /// Here are some of the more common syscall codes:
     ///
-    ///     code    call            arguments                  results
-    ///     ====    ====            =========                  =======
-    ///     1       print integer   $a0 = integer to print
-    ///     2       print float     $f12 = float to print
-    ///     3       print double    $f12 = float to print
-    ///     4       print string    $a0 = address of
-    ///                                 beginning of string
-    ///     5       read integer                               integer stored in $v0
-    ///     6       read float                                 float stored in $f0
-    ///     7       read double                                double stored in $f0
-    ///     8       read string     $a0 = pointer to buffer,   string stored in buffer
-    ///                                 $a1 = length of buffer
-    ///     9       sbrk (allocate  $a0 = size needed          $v0 = address of buffer
-    ///                 memory
-    ///                 buffer)
-    ///     10      exit
+    /// code  |  call           |  arguments                  |  results
+    /// ------+-----------------+-----------------------------+---------
+    /// 1     |  print integer  |  $a0 = integer to print     |
+    /// 2     |  print float    |  $f12 = float to print      |
+    /// 3     |  print double   |  $f12 = float to print      |
+    /// 4     |  print string   |  $a0 = address of           |
+    ///       |                 |      beginning of string    |
+    /// 5     |  read integer   |                             |  integer stored in $v0
+    /// 6     |  read float     |                             |  float stored in $f0
+    /// 7     |  read double    |                             |  double stored in $f0
+    /// 8     |  read string    |  $a0 = pointer to buffer,   |  string stored in buffer
+    ///       |                 |      $a1 = length of buffer |
+    /// 9     |  sbrk (allocate |  $a0 = size needed          |  $v0 = address of buffer
+    ///       |  memory buffer) |                             |
+    /// 10    |  exit           |                             |
     Syscall,
+
+    /// An I instruction formatted as Immediate(opcode, rs, rt, imm).
+    I(u8, u8, u8, u32),
 
     /// - opcode: machinecode representation of the instruction mnemonic
     /// An invalid instruction.
@@ -126,6 +127,10 @@ impl Debug for Instruction {
                        rt,
                        shift,
                        funct)
+            }
+
+            Instruction::I(opcode, rs, rt, imm) => {
+                write!(f, "I({:#x}, {:#x}, {:#x}, {})", opcode, rs, rt, imm)
             }
 
             Instruction::J(addr) => write!(f, "J({:#x})", addr),
@@ -223,6 +228,7 @@ impl Processor {
     pub fn step(&mut self) -> Result<(), String> {
         let next = try!(self.next_instruction());
         let instruction = parse_instruction(next.clone());
+        trace!("{:?}", instruction);
 
         match instruction {
             Instruction::R(rd, rs, rt, shift, funct) => {
@@ -234,6 +240,7 @@ impl Processor {
                 // subtract 4 because the next_instruction() function
                 // incremented the program counter
                 self.pc += offset as usize - 4;
+                debug!("Jumping to {:#x}", self.pc);
                 Ok(())
             }
 
@@ -243,6 +250,8 @@ impl Processor {
                 let arg = self.registers[RET_1];
                 self.handle_syscall(arg)
             }
+
+            Instruction::I(opcode, rs, rt, imm) => self.handle_i_instruction(opcode, rs, rt, imm),
 
             Instruction::Invalid => Err(format!("Invalid instruction: {:#b}", next)),
         }
@@ -255,12 +264,15 @@ impl Processor {
             // exit
             10 => {
                 self.stopped = true;
+                info!("Stopping Emulator");
                 Ok(())
             }
 
-            // print integer
+            // print integer in $a0
             1 => {
-                print!("{}", self.registers[ARG_0 as usize]);
+                let value = self.registers[ARG_0 as usize];
+                debug!("Printing integer: {}", value);
+                print!("{}", value);
                 Ok(())
             }
 
@@ -280,20 +292,22 @@ impl Processor {
                             -> Result<(), String> {
         match funct {
             constants::FUNCT_ADD => {
-                self.registers[rd as usize] = self.registers[rs as usize] +
-                                              self.registers[rt as usize];
+                let a = self.registers[rs as usize];
+                let b = self.registers[rt as usize];
+                self.registers[rd as usize] =  a + b;
+                debug!("${} = {} + {}", rd, a, b);
                 Ok(())
             }
 
             constants::FUNCT_AND => {
                 self.registers[rd as usize] = self.registers[rs as usize] &
-                                              self.registers[rt as usize];
+                    self.registers[rt as usize];
                 Ok(())
             }
 
             constants::FUNCT_DIV => {
                 self.registers[rd as usize] = self.registers[rs as usize] /
-                                              self.registers[rt as usize];
+                    self.registers[rt as usize];
                 Ok(())
             }
 
@@ -304,6 +318,18 @@ impl Processor {
 
             // Otherwise we don't know what this one is
             unknown => Err(format!("Unknown funct: {:#b}", unknown)),
+        }
+    }
+
+    /// Evaluate a single I instruction.
+    fn handle_i_instruction(&mut self, opcode: u8, rs: u8, rt: u8, imm: u32) -> Result<(), String> {
+        match opcode {
+            constants::OP_ORI => {
+                self.registers[rs as usize] = self.reg(rt) | imm;
+                Ok(())
+            }
+
+            unknown => Err(format!("Unknown opcode: {:#b}", unknown)),
         }
     }
 
@@ -361,6 +387,23 @@ pub fn parse_instruction(inst: u32) -> Instruction {
             }
         }
 
+        // Otherwise assume it's an immediate
+        constants::OP_ORI => {
+            let rs = ((inst >> 21) & 0b0001_1111) as u8;
+            let rt = ((inst >> 16) & 0b0001_1111) as u8;
+            let imm = inst & 0xff_ff;
+            Instruction::I(constants::OP_ORI, rs, rt, imm)
+        }
+
+        constants::OP_ADDI => {
+            let rs = ((inst >> 21) & 0b0001_1111) as u8;
+            let rt = ((inst >> 16) & 0b0001_1111) as u8;
+            let imm = inst & 0xff_ff;
+            Instruction::I(constants::OP_ADDI, rs, rt, imm)
+
+        }
+
+        // Otherwise it's invalid
         _ => Instruction::Invalid,
     }
 }
@@ -400,17 +443,17 @@ mod test {
 
         // Double check the first 42 elements equal 7
         assert!(cpu.memory
-            .to_vec()
-            .iter()
-            .take(42)
-            .all(|e| *e == 0x07));
+                .to_vec()
+                .iter()
+                .take(42)
+                .all(|e| *e == 0x07));
 
         // And make sure the rest of RAM is still zeroed out
         assert!(cpu.memory
-            .to_vec()
-            .iter()
-            .skip(42)
-            .all(|e| *e == 0x00));
+                .to_vec()
+                .iter()
+                .skip(42)
+                .all(|e| *e == 0x00));
     }
 
     #[test]
@@ -466,6 +509,14 @@ mod test {
         let mut inst = 12;
         let got = parse_instruction(inst);
         let should_be = Instruction::Syscall;
+        assert_eq!(got, should_be);
+    }
+
+    #[test]
+    fn parse_I_instruction() {
+        let mut inst = helpers::make_i_instruction(OP_ORI as usize, TEMP_1, TEMP_0, 42);
+        let got = parse_instruction(inst);
+        let should_be = Instruction::I(OP_ORI, TEMP_1 as u8, TEMP_0 as u8, 42);
         assert_eq!(got, should_be);
     }
 
@@ -653,16 +704,4 @@ mod test {
             cpu.handle_syscall(1).unwrap();
         }
     }
-
-    // #[test]
-    // fn dummy_data() {
-    //     use std::fs::File;
-    //     use std::io::Write;
-    //     let instructions = vec![
-    //         helpers::add_instruction(TEMP_0, TEMP_0, TEMP_1), // add r1, r1, r2
-    //     ];
-    //     let instructions_as_bytes = helpers::instructions_to_bytes(instructions);
-    //     let mut f = File::create("add").unwrap();
-    //     f.write(&instructions_as_bytes);
-    // }
 }

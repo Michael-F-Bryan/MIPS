@@ -30,7 +30,11 @@ pub const TEMP_7: usize = 15;
 // funct codes for R instructions
 pub const FUNCT_ADD: u8 = 0x20;
 pub const FUNCT_AND: u8 = 0x24;
-pub const FUNCT_DIV: u8 = 0x1c;
+pub const FUNCT_DIV: u8 = 0x1C;
 pub const FUNCT_MULT: u8 = 0x18;
 
 pub const JMP: u8 = 0x02;
+
+// opcodes for I instructions
+pub const OP_ORI: u8 = 0x0D;
+pub const OP_ADDI: u8 = 0x08;
