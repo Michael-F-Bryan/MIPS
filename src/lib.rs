@@ -27,5 +27,6 @@ extern crate env_logger;
 pub mod processor;
 pub mod constants;
 pub mod helpers;
+pub mod assembler;
 
 pub use processor::{Processor, Instruction, parse_instruction};
